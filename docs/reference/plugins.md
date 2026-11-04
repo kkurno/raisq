@@ -141,14 +141,15 @@ Each `login` entry:
 
 | Field | What |
 |---|---|
-| `to` | Where the agent expects it in the container |
+| `to` | Where the agent expects it in the container, as a file |
+| `env` | The variable it goes in instead, for an agent that reads its login from the environment, such as Cursor's `CURSOR_AUTH_TOKEN` |
 | `file` | Where it is on your machine |
 | `command` | Prints it, when it's not a file, such as the macOS Keychain. Used when `file` isn't there. |
 | `keep` | The JSON fields that go in, and nothing else. A login store can hold other tools' tokens, so this lists what to keep, never what to drop. |
 | `expires_at` | The field with the login's expiry |
 | `refresh` | Renews the login on your machine when it would expire mid-attempt |
 
-The login is copied into each container, never mounted, so nothing the agent writes there reaches your machine.
+The login is copied into each container, never mounted, so nothing the agent writes there reaches your machine. A login that goes in as a variable is passed through a private file, never on a command line, and only the access token goes in: Cursor's refresh token stays in your Keychain.
 
 ### What the agent reports
 

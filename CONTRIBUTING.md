@@ -41,7 +41,7 @@ The order of an attempt's steps lives in `usecase/attempt.go`. No plugin, preset
 
 ## Adding a tool
 
-Most new tools need no Go at all: a plugin file in `.raisq/plugins/`, filled through the built-in `command` plugin. See [docs/plugins.md](docs/plugins.md). A built-in plugin file that `raisq init` writes lives in `plugin/detect/builtins/`.
+Most new tools need no Go at all: a plugin file in `.raisq/plugins/`, filled through the built-in `command` plugin. See [docs/reference/plugins.md](docs/reference/plugins.md). A built-in plugin file that `raisq init` writes lives in `plugin/detect/builtins/`.
 
 Write Go only when a plugin file can't express it, such as the page crawler in `plugin/builtin/`.
 
@@ -49,7 +49,7 @@ Write Go only when a plugin file can't express it, such as the page crawler in `
 
 - Keep a pull request to one change.
 - Add a test for new behaviour that could break. Tests use the fakes in `slot/fake` and a temporary git repo, not a real agent.
-- If you change something a user sees, update the README or the relevant doc in `docs/`.
+- If you change something a user sees, update the README, or the guide or reference in `docs/` it belongs to.
 - `gofmt -l .` and `go vet ./...` must be clean. CI runs both, and the tests.
 
 ## Commit messages

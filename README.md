@@ -1,137 +1,113 @@
 # RaisQ
 
-**AI-built work isn't trusted until it can prove what it says.**
+**Let an AI agent code for you, and only read the results that are worth your time.**
 
-RaisQ (say it like *rescue*) lets an AI coding agent work on your project while nobody is watching, then makes every result prove itself before you spend any attention on it. It runs your agent in a container, checks the result with your own tests, and has a different AI model judge it against your spec, quoting its evidence for every claim. Plain code, not an AI, decides pass or fail. You read only what needs a person.
+You give RaisQ a task. It has an AI coding agent (like Claude Code or Cursor) build it, then checks the work before you ever see it. If the work is wrong, RaisQ tells the agent exactly what to fix and lets it try again. You only review work that has already passed.
+
+Say it like *rescue*.
+
+## The problem it solves
+
+AI agents are fast, but you can't trust them unwatched. An agent trying to finish a task might:
+
+- edit a failing test so it passes, instead of fixing the code
+- make up a phone number, a price or an opening time
+- leave placeholder text that looks finished
+
+If you have to check every line it writes, you haven't saved much time. RaisQ does that checking for you.
+
+## How it works
 
 ```
-$ raisq task "Add a cake order page"
-$ raisq batch
-  ▸ order-page
-  attempt 1 · built · checks passed · critic: web/form-states: answered no
-  attempt 2 · built · checks passed · critic: 1 claims checked, 0 failed
-  Ready for review.
-
-$ raisq review order-page
-  📝 Choices the spec didn't cover
-  - The order handler acknowledges an order without storing it
-  ✓ 4/4 criteria shown · "Cake orders need 2 days' notice" backed by a confirmed fact
+  you describe a task
+         │
+         ▼
+  ┌─────────────┐      ┌──────────────┐      ┌───────────────┐
+  │ 1. Build    │ ───► │ 2. Test      │ ───► │ 3. Review     │
+  │ an AI agent │      │ your tests   │      │ a second AI   │
+  │ writes code │      │ run on it    │      │ checks facts  │
+  └─────────────┘      └──────────────┘      └───────────────┘
+         ▲                                           │
+         │            something's wrong?             │
+         └──────── "here's exactly what to fix" ◄────┤
+                                                     │ all good
+                                                     ▼
+                                          you review the result
 ```
 
-## Why
+1. **Build.** The agent writes the code in a sealed-off container, so it can't touch anything else on your computer.
+2. **Test.** RaisQ runs your project's tests. The agent can't cheat by editing them: RaisQ always runs the tests as they were before the agent started.
+3. **Review.** A second AI reads the changes and checks every fact against the facts you gave RaisQ. A made-up phone number fails.
 
-An AI that checks its own work shares the blind spots that produced it. Left unattended, an agent will also take the shortest path to "done": edit the failing test, invent a phone number, or leave a placeholder that looks finished. RaisQ keeps checking separate from building:
+If any step fails, the agent gets another try (up to three) with a precise list of what was wrong. Then the work waits for you.
 
-- **Your tests decide, as they were before the task.** Editing a test or a check's config changes nothing. A test the agent adds counts only once RaisQ has seen it fail on the old code and pass on the new.
-- **A second model judges, and must quote.** It sees only the spec and what the task changed. Every claim a user would read, such as a price, a phone number or a promise, must match a fact you confirmed. An invented one fails, and so does a quote that isn't really in the output.
-- **The agent can't reach your machine.** It works in a throwaway container on a clone with no remote, with no SSH keys, cloud logins or tokens. Your agent's own login is copied in for one attempt, and nothing it writes there gets back out.
-- **Nothing ships.** RaisQ never merges, deploys or releases. A passing task is a branch waiting for your normal review.
+## Quick start
 
-## Install
+You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI agent you're logged into: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Cursor](https://cursor.com/cli).
 
-RaisQ is one executable. You need **git**, **Docker** (or Podman) and an **agent CLI** you're logged into, such as [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex](https://github.com/openai/codex).
-
-Download a binary for your platform from [Releases](https://github.com/kkurno/raisq/releases), or install with Go 1.23 or later:
+**1. Install RaisQ.** Download it from [Releases](https://github.com/kkurno/raisq/releases), or with Go:
 
 ```
 go install github.com/kkurno/raisq/cmd/raisq@latest
 ```
 
-RaisQ doesn't install your agent or Docker. `raisq doctor` says what's missing.
-
-## Quick start
-
-In your project:
+**2. Set up your project.** In your project's folder:
 
 ```
-raisq init                           # finds your tests, agent and Docker; asks a few facts
-raisq task "Add a cake order page"   # writes a spec, asking what isn't clear
-raisq run                            # builds and checks it now, asking you if the agent has a question
-raisq review order-page              # read the review pack
-raisq review order-page --done       # the branch raisq/order-page is yours to merge
+raisq init
 ```
 
-To queue several tasks and walk away, use `raisq batch` instead of `raisq run`. A batch never waits: a question parks that task and the next one starts. It stops at its time limit or at your agent's usage limit, and picks up where it left off.
+RaisQ finds your tests and your agent, and asks a few questions about your project.
 
-No agent? Make the change yourself and let RaisQ verify it:
-
-```
-git switch -c raisq/order-page   # make the change and commit it
-raisq run --check order-page
-```
-
-## How it works
-
-Each task goes through the same steps, in an order no plugin or setting can change:
-
-1. **Build.** A fresh agent session in a container gets the task's acceptance criteria and an index of your project's facts. It writes the change and a short report.
-2. **Audit.** RaisQ checks that nothing the judging depends on was touched, then commits the change itself.
-3. **Check.** Your checks run on the result, with existing tests restored from before the task. Failures that were already there before the task don't count.
-4. **Judge.** A different model reads what the task changed. It lists every claim a user would read, matches each one to a fact, and confirms each acceptance criterion is met, with quotes.
-5. **Decide.** Fixed rules turn those answers into pass, fail or unsure. A fail goes back to a new agent session as exact instructions, up to three times.
-
-You review what passed, and what's unsure is listed first. Every mistake you find later can become a new check with `raisq learn`, so the next task is held to it.
-
-See [docs/how-it-works.md](docs/how-it-works.md) for the details.
-
-## What's in your project
-
-`raisq init` adds a `.raisq/` folder. It's plain text, and you commit it with your project:
+**3. Give it a task.**
 
 ```
-.raisq/
-  raisq.yaml      which agent builds, which model judges, which container tool: four lines
-  facts/          what's true about your project: name, phone, hours, prices, house rules
-  tasks/          one folder per task: its spec, its state and its runs
-  plugins/        one file per tool: your test commands, your agent, a site to start
-  rubrics/        standing questions the critic asks, such as "is there placeholder text?"
+raisq task "Add a contact page"
 ```
 
-Every fact records how you know it: *confirmed* by a person, *inferred* (a guess), or a *gap* (known to be unknown). A claim backed by a guess is shown to you as unsure, not passed. A gap must stay out of the output.
+RaisQ turns your sentence into a clear list of what "done" means, and asks you about anything unclear.
 
-See [docs/configuration.md](docs/configuration.md).
+**4. Let it work.**
 
-## Commands
+```
+raisq run
+```
 
-| Command | What it does |
+**5. Look at the result.**
+
+```
+raisq review add-a-contact-page
+```
+
+You'll see what the agent did, anything it wasn't sure about, and every check it passed. If you're happy:
+
+```
+raisq review add-a-contact-page --done
+```
+
+The work is on its own git branch, `raisq/add-a-contact-page`. Merge it like any other branch. RaisQ never merges or deploys anything itself.
+
+The [getting started guide](docs/guides/getting-started.md) walks through all of this with a real example.
+
+## What next
+
+| I want to… | Read |
 |---|---|
-| `raisq init` | Set up a project, once |
-| `raisq task "..."` | Describe a piece of work. Also `--spec <file>` for a Spec Kit or OpenSpec file, and `--from <id>` for an issue. |
-| `raisq run [task]` | Build and check the next queued task, or the one you name. `--check` verifies a change you made yourself. |
-| `raisq batch` | Build and check every queued task, unattended |
-| `raisq review [task]` | Read a review pack, then `--done`, `--send-back "why"` or `--answer "..."` |
-| `raisq status` | Every task's state, and facts due for rechecking |
-| `raisq fact add`, `list`, `confirm` | Keep your project's facts |
-| `raisq learn` | Turn a mistake into a check or a rubric, and pick done work to spot-check |
-| `raisq doctor` | Say what's missing or wrong |
-| `raisq bench critic` | Measure a model as the critic before trusting it |
-| `raisq plugin list`, `new`, `add`, `test` | Work with plugins |
+| Try it step by step, with an example | [Getting started](docs/guides/getting-started.md) |
+| Queue several tasks and walk away | [Working with tasks](docs/guides/tasks.md) |
+| Tell RaisQ the facts about my project | [Facts](docs/guides/facts.md) |
+| Fix something that isn't working | [Troubleshooting](docs/guides/troubleshooting.md) |
+| Use a different tool, test runner or AI | [Plugins](docs/reference/plugins.md) |
+| See every setting | [Configuration](docs/reference/configuration.md) |
+| Understand exactly how a result is judged | [How it works](docs/reference/how-it-works.md) |
 
-## Plugins
+## Is it safe?
 
-Everything outside RaisQ's rules is a plugin: the agent, the critic model, Docker, your test commands, a site to start, extractors, issue trackers, reports. Most plugins are a short YAML file describing a tool you already have, so adding one needs no code and no new release:
-
-```yaml
-# .raisq/plugins/unit-tests.yaml
-name: unit-tests
-slot: checks
-run: npm test
-```
-
-`raisq plugin add <tool> --slot <slot>` asks a model to write one from the tool's `--help`, tests it, and asks you before saving it. See [docs/plugins.md](docs/plugins.md).
-
-## Built in
-
-- **Builders and critics:** Claude Code and Codex
-- **Isolation:** Docker and Podman
-- **Checks:** npm, pnpm, yarn, Go, Make, Playwright and Lighthouse
-- **Presets:** websites (page text, contact details, links) and Go libraries (public API)
-
-Anything else is a plugin file away. RaisQ is young, so expect rough edges and changes to the files in `.raisq/` between releases; the [release notes](https://github.com/kkurno/raisq/releases) say what changed. Bug reports and plugins are very welcome.
+The agent runs in a container with only a copy of your project. It can't see your SSH keys, cloud logins or other files, and it can't push to git. RaisQ never merges, deploys or publishes: everything waits for you. See [how isolation works](docs/reference/how-it-works.md#isolation).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). To report a security issue, see [SECURITY.md](SECURITY.md).
+Bug reports, plugins and doc fixes are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY.md](SECURITY.md) to report a security issue.
 
 ## License
 
