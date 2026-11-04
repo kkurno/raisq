@@ -88,7 +88,7 @@ feat(config)!: rename critic_model to critic
 BREAKING CHANGE: rename `critic_model:` to `critic:` in .raisq/raisq.yaml.
 ```
 
-Before 1.0, a breaking change to a file format in `.raisq/` is allowed, but it always needs that footer.
+A breaking change to a file format in `.raisq/` always needs that footer, so the release notes tell users what to change.
 
 ## Reporting a bug
 

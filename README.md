@@ -120,14 +120,14 @@ run: npm test
 
 `raisq plugin add <tool> --slot <slot>` asks a model to write one from the tool's `--help`, tests it, and asks you before saving it. See [docs/plugins.md](docs/plugins.md).
 
-## Status
+## Built in
 
-RaisQ is early (v0.1). The whole loop works end to end, and it has been run with real models:
+- **Builders and critics:** Claude Code and Codex
+- **Isolation:** Docker and Podman
+- **Checks:** npm, pnpm, yarn, Go, Make, Playwright and Lighthouse
+- **Presets:** websites (page text, contact details, links) and Go libraries (public API)
 
-- **As the critic,** Claude Opus caught 30 of 30 planted mistakes, failed 0 of 27 true claims, and every quote was real. Run `raisq bench critic` to measure the model you plan to use.
-- **As the builder,** Claude Code built a real task headless in Docker, logged in from the macOS Keychain. It passed on its second attempt after the first attempt's exact failure was handed back.
-
-Expect rough edges and breaking changes before 1.0. Built-in plugins today: Claude Code and Codex for building and judging, and Docker or Podman for isolation. Checks for npm, pnpm, yarn, Go, Make, Playwright and Lighthouse. Presets for websites (page text, contact details, links) and Go libraries (public API). Bug reports and plugins are very welcome.
+Anything else is a plugin file away. RaisQ is young, so expect rough edges and changes to the files in `.raisq/` between releases; the [release notes](https://github.com/kkurno/raisq/releases) say what changed. Bug reports and plugins are very welcome.
 
 ## Contributing
 
