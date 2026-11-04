@@ -108,6 +108,17 @@ It's mounted read-only while the agent builds, and a change to it fails the audi
 
 ## builder
 
+The builder can be any AI coding agent that has a command-line tool and can run without asking for permission. RaisQ ships plugin files for the ones tested so far, and `raisq init` sets them up when it finds them:
+
+| Agent | Plugin | Login brought in |
+|---|---|---|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude-code` | the login file on Linux, the Keychain on macOS |
+| [Cursor](https://cursor.com/cli) | `cursor` | the Keychain on macOS |
+
+For any other agent, write a plugin file like the one below, or let `raisq plugin add <agent> --slot builder` draft one from its `--help`. The critic is a `model` plugin and works the same way: any AI that can answer a prompt with no tools.
+
+Here's the built-in Claude Code plugin as an example:
+
 ```yaml
 name: claude-code
 slot: builder
@@ -163,7 +174,7 @@ The agent writes `/raisq/out/result.json`:
 
 ## model
 
-The critic, and every other AI job with no tools, such as writing a spec or drafting a plugin. It runs on your machine, reads the prompt on stdin, and answers with JSON on stdout.
+The critic, and every other AI job with no tools, such as writing a spec or drafting a plugin. It runs on your machine, reads the prompt on stdin, and answers with JSON on stdout. It can be any AI that does that. The built-in `claude-code-critic` and `cursor-critic` are the ones tested so far.
 
 ```yaml
 name: claude-code-critic
@@ -173,7 +184,7 @@ model: opus
 run: claude -p --model {model} --tools "" --output-format text
 ```
 
-It must have no tools: it judges what it's shown and nothing else. Measure it before trusting it with `raisq bench critic --runs 3`.
+It must have no tools: it judges what it's shown and nothing else, and it must be a different model from the builder. However good a model is said to be, measure it on your setup before trusting it: `raisq bench critic --runs 3` gives it planted mistakes and fails it below the bar.
 
 ## extractor
 

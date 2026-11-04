@@ -18,12 +18,7 @@ If you can't use Docker, you can still make changes by hand and let RaisQ check 
 
 **"not logged in on this machine"**
 
-RaisQ uses your agent's existing login, so log in once the normal way:
-
-```
-claude        # for Claude Code
-agent login   # for Cursor
-```
+RaisQ uses your agent's existing login, so log in once the normal way, such as by running `claude` for Claude Code or `agent login` for Cursor.
 
 On a Mac, the first run may ask you to allow access to the Keychain. Choose **Allow**.
 

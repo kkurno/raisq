@@ -2,7 +2,7 @@
 
 **Let an AI agent code for you, and only read the results that are worth your time.**
 
-You give RaisQ a task. It has an AI coding agent (like Claude Code or Cursor) build it, then checks the work before you ever see it. If the work is wrong, RaisQ tells the agent exactly what to fix and lets it try again. You only review work that has already passed.
+You give RaisQ a task. It has an AI coding agent build it, then checks the work before you ever see it. If the work is wrong, RaisQ tells the agent exactly what to fix and lets it try again. You only review work that has already passed.
 
 Say it like *rescue*.
 
@@ -43,7 +43,7 @@ If any step fails, the agent gets another try (up to three) with a precise list 
 
 ## Quick start
 
-You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI agent you're logged into: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Cursor](https://cursor.com/cli).
+You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI coding agent with a command-line tool, logged in. RaisQ works with any agent; [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are the ones tested so far, and [any other can be added](docs/reference/plugins.md#builder).
 
 **1. Install RaisQ.** Download it from [Releases](https://github.com/kkurno/raisq/releases), or with Go:
 
@@ -97,7 +97,7 @@ The [getting started guide](docs/guides/getting-started.md) walks through all of
 | Queue several tasks and walk away | [Working with tasks](docs/guides/tasks.md) |
 | Tell RaisQ the facts about my project | [Facts](docs/guides/facts.md) |
 | Fix something that isn't working | [Troubleshooting](docs/guides/troubleshooting.md) |
-| Use a different tool, test runner or AI | [Plugins](docs/reference/plugins.md) |
+| Use a different AI, tool or test runner | [Plugins](docs/reference/plugins.md) |
 | See every setting | [Configuration](docs/reference/configuration.md) |
 | Understand exactly how a result is judged | [How it works](docs/reference/how-it-works.md) |
 

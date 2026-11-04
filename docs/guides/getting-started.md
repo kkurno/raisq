@@ -10,7 +10,9 @@ You need three things on your computer:
 |---|---|---|
 | [git](https://git-scm.com) | RaisQ puts each task's work on its own branch | `git --version` |
 | [Docker](https://www.docker.com/get-started/) | The agent works inside a container, away from your files | `docker info` |
-| An AI agent you're logged into: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Cursor](https://cursor.com/cli) | It writes the code, and a second model checks it | `claude --version` or `cursor-agent --version` |
+| An AI coding agent with a command-line tool, logged in | It writes the code, and a second model checks it | Its own version command, such as `claude --version` |
+
+RaisQ works with any AI coding agent. [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are tested and set up automatically; for any other, see [adding an agent](../reference/plugins.md#builder). This guide uses Claude Code in its examples.
 
 Your project should also be a git repository with its work committed, and ideally have some tests. RaisQ works without tests, but it can check much less.
 
