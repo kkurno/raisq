@@ -28,7 +28,7 @@ A task is always in exactly one state. `raisq status` shows them all.
 
 A run is one task, judged against one fixed version of the spec. When it starts, RaisQ records which version of your facts and the task's spec it's judged against, such as `facts@77c962ccf551`. Every attempt and the critic use that version, so a fact you edit mid-run doesn't change what's being judged. If you change a fact the result relied on, the task goes back to the queue rather than to review.
 
-A task gets up to three attempts. Each one is a fresh agent session in a new container, continuing from the branch the last attempt committed, so it fixes forward instead of starting over.
+A task gets a limited number of attempts: `attempts` in `raisq.yaml`, three by default. Each one is a fresh agent session in a new container, continuing from the branch the last attempt committed, so it fixes forward instead of starting over.
 
 ## An attempt
 

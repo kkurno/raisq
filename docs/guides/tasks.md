@@ -51,13 +51,7 @@ Queue up several tasks, then:
 raisq batch
 ```
 
-A batch runs every queued task, one after another. It's made for leaving overnight:
-
-- **It never waits.** If the agent has a question, that task is set aside (*parked*) and the next one starts.
-- **It stops cleanly** after 8 hours, or when your AI account hits its usage limit. Run `raisq batch` again to continue where it left off.
-- **It ends with a report** of what's ready and what's waiting for you, saved in `.raisq/batch-report.md`.
-
-To set a different time limit: `raisq batch --for 2h`.
+A batch runs every queued task, one after another, and never waits for you: if the agent has a question, that task is set aside (*parked*) and the next one starts. It ends with a report of what's ready and what's waiting for you. See [Batches](batch.md).
 
 ## Checking on tasks
 
@@ -101,7 +95,7 @@ Then decide:
 | Reason | Means | Fix |
 |---|---|---|
 | question | The agent needed a decision only you can make | `--answer` it |
-| out of attempts | Three tries, and it still didn't pass | Read the review pack to see what kept failing. Make the task clearer, then `--send-back`. |
+| out of attempts | It used all its tries (`attempts` in `raisq.yaml`, three by default) and still didn't pass | Read the review pack to see what kept failing. Make the task clearer, then `--send-back`. |
 | stuck | Two tries failed in exactly the same way | Usually the task needs something it doesn't have. Read the failures. |
 | needs something | The agent needed access it doesn't have, such as a database or an API key | See [Plugins: provides](../reference/plugins.md#provides) |
 | blocked | A tool a check needs isn't installed, or the audit found a problem | `raisq doctor` says what |

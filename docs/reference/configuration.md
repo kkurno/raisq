@@ -35,7 +35,7 @@ Defaults you can override, if you need to:
 
 | Key | Default | What |
 |---|---|---|
-| `attempts` | `3` | Attempts per task before it's parked |
+| `attempts` | `3` | Tries per task, the first included, before it's parked. A task stops sooner if two tries in a row fail the same way. |
 | `batch` | `8h` | How long a batch keeps starting new tasks |
 | `split_over` | `6` | Criteria a task may have before `raisq task` offers to split it |
 | `spot_check` | `0.2` | Share of done tasks `raisq learn` picks for you to re-read |

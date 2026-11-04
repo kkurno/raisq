@@ -64,7 +64,7 @@ The agent needed access to something kept out of its container, such as a databa
 
 **A batch stopped early**
 
-It hit its time limit or your AI account's usage limit. Run `raisq batch` again later, and it picks up where it left off.
+It hit its time limit or your AI account's usage limit. Run `raisq batch` again later, and it picks up where it left off. See [Batches](batch.md#what-a-batch-does).
 
 **Something passed that shouldn't have**
 
