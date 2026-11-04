@@ -142,7 +142,7 @@ login_env: [ANTHROPIC_API_KEY]
 | Field | What |
 |---|---|
 | `run` | Runs in the container, in the project. `{prompt}` is the prompt file. It must write `/raisq/out/result.json` before it exits. |
-| `vendor`, `model` | So RaisQ can check the critic is a different model |
+| `vendor`, `model` | So review packs can say when the critic is the builder's vendor or model |
 | `install` | Installs the agent in a fresh container, when the image lacks it |
 | `image` | The container image |
 | `login` | Where the agent's login is on your machine, and where it goes inside |
@@ -184,7 +184,7 @@ model: opus
 run: claude -p --model {model} --tools "" --output-format text
 ```
 
-It must have no tools: it judges what it's shown and nothing else, and it must be a different model from the builder. However good a model is said to be, measure it on your setup before trusting it: `raisq bench critic --runs 3` gives it planted mistakes and fails it below the bar.
+It must have no tools: it judges what it's shown and nothing else. It can be any model, even the builder's, but a different one shares fewer of its blind spots, and every review pack says when they match. However good a model is said to be, measure it on your setup before trusting it: `raisq bench critic --runs 3` gives it planted mistakes and fails it below the bar.
 
 ## extractor
 

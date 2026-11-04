@@ -38,13 +38,13 @@ func TestDetectNextApp(t *testing.T) {
 	}
 }
 
-func TestOneAgentUsesSameVendorDifferentModel(t *testing.T) {
+func TestOneAgentUsesSameVendor(t *testing.T) {
 	onPath = func(bin string) bool { return bin == "claude" }
 	p := Detect(t.TempDir())
 	if p.Builder != "claude-code" || p.Critic != "claude-code-critic" {
 		t.Fatal(p.Builder, p.Critic)
 	}
-	if !strings.Contains(strings.Join(p.Notes, "\n"), "different model from the same vendor") {
+	if !strings.Contains(strings.Join(p.Notes, "\n"), "same vendor as the builder") {
 		t.Error("should say so")
 	}
 }

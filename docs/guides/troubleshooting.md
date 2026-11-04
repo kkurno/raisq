@@ -30,10 +30,6 @@ A plugin uses a tool that isn't installed on your computer. The message says how
 
 You're not in a RaisQ project. Go to your project's folder, or run `raisq init` there.
 
-**"the critic must be a different model from the builder"**
-
-The AI that checks the work can't be the same model that wrote it, because it would share the same blind spots. Open `.raisq/raisq.yaml` and change `critic:` to a different model's plugin.
-
 ## Running
 
 **"make the change on branch raisq/\<task\> first"**

@@ -2,7 +2,7 @@
 
 Instructions for AI coding agents working on RaisQ's own code. People should start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
-RaisQ makes AI-built work prove itself: it runs an agent in a container, checks the result with the project's tests, has a different model judge it with quotes, and decides pass or fail in plain code. That makes this codebase unusual: its job is to not trust an agent. Keep that in mind when changing it.
+RaisQ makes AI-built work prove itself: it runs an agent in a container, checks the result with the project's tests, has a separate AI session judge it with quotes, and decides pass or fail in plain code. That makes this codebase unusual: its job is to not trust an agent. Keep that in mind when changing it.
 
 ## Commands
 

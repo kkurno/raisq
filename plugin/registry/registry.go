@@ -119,15 +119,16 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 		if !ok {
 			return d, fmt.Errorf("raisq.yaml names builder %q, and there's no plugin file with slot: builder and that name", p.Config.Builder)
 		}
-		if critic.Vendor != "" && critic.Vendor == builderFile.Vendor && critic.Model == builderFile.Model {
-			return d, fmt.Errorf("the critic must be a different model from the builder, or it shares its blind spots: both are %s %s", critic.Vendor, critic.Model)
-		}
 		a := agent.Agent{PluginName: builderFile.Name, Run: builderFile.Run, Install: builderFile.Install}
 		if builderFile.Tool != nil {
 			a.Find = builderFile.Tool.Find
 		}
 		d.Builder = a
-		if critic.Vendor != "" && critic.Vendor == builderFile.Vendor {
+		switch {
+		case critic.Vendor == "" || critic.Vendor != builderFile.Vendor:
+		case critic.Model == builderFile.Model:
+			d.Notices = append(d.Notices, fmt.Sprintf("The critic is the same model as the builder (%s %s), in its own session with no tools. It may share the builder's blind spots; a different model would catch more.", critic.Vendor, critic.Model))
+		default:
 			d.Notices = append(d.Notices, fmt.Sprintf("The critic (%s) is from the same vendor as the builder (%s): a different model, but closer blind spots than another vendor's.", critic.Model, builderFile.Model))
 		}
 	}

@@ -28,7 +28,7 @@ Each line names a plugin for a slot that takes exactly one, because a choice has
 |---|---|---|
 | `preset` | The kind of project `init` found, which picked the starting plugins and rubrics | `web` adds page text, contact-detail and link checks, and website rubrics. `library-go` adds the public API check. A list when a project is more than one kind. After `init`, the files are what count. |
 | `builder` | The plugin that builds | A file in `plugins/` with `slot: builder` |
-| `critic` | The plugin that judges, and does every other AI job with no tools | A file with `slot: model`. It must be a different model from the builder. |
+| `critic` | The plugin that judges, and does every other AI job with no tools | A file with `slot: model`. Any model works. If it's the builder's vendor or model, every review pack says so. |
 | `isolation` | Where attempts run | `docker`, `podman`, or `none` for a disposable machine |
 
 Defaults you can override, if you need to:

@@ -60,7 +60,7 @@ Every check runs on the result:
 
 ### 4. Judge
 
-The critic is a different model from the builder, in its own session, with no tools. It sees the task's spec and the text of what the task changed: the diff, and for a website the text of every page the task changed, with the changed lines marked. Text that was there before the task isn't this task's to answer for, and isn't judged.
+The critic runs in its own session, with no tools, and is ideally a different model from the builder. It sees the task's spec and the text of what the task changed: the diff, and for a website the text of every page the task changed, with the changed lines marked. Text that was there before the task isn't this task's to answer for, and isn't judged.
 
 It works in two calls, so the largest text is read once:
 

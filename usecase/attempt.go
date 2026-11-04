@@ -43,7 +43,7 @@ type Deps struct {
 	// Reload rereads the plugin files, after a person wrote a provider mid-run.
 	Reload func() (Deps, error)
 	// Notices go at the top of every review pack: no isolation, or a critic
-	// from the same vendor as the builder.
+	// from the same vendor or model as the builder.
 	Notices []string
 	Now     func() time.Time
 	Log     func(format string, args ...any)

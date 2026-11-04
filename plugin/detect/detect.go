@@ -154,7 +154,7 @@ func Detect(dir string) Proposal {
 		p.Notes = append(p.Notes, ".env.test goes to the checks only, after the builder has exited")
 	}
 
-	// One-of slots. The critic must be a different model; prefer another vendor.
+	// One-of slots. Prefer a critic from another vendor.
 	agents := []string{}
 	for _, a := range []string{"claude-code", "cursor"} {
 		bin := map[string]string{"claude-code": "claude", "cursor": "cursor-agent"}[a]
@@ -168,7 +168,7 @@ func Detect(dir string) Proposal {
 		p.Builder, p.Critic = "claude-code", "claude-code-critic"
 	case 1:
 		p.Builder, p.Critic = agents[0], agents[0]+"-critic"
-		p.Notes = append(p.Notes, "one agent CLI: the critic is a different model from the same vendor, and every review pack says so")
+		p.Notes = append(p.Notes, "one agent CLI: the critic is from the same vendor as the builder, and every review pack says so")
 	default:
 		p.Builder, p.Critic = agents[0], agents[1]+"-critic"
 	}

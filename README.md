@@ -22,7 +22,7 @@ Four actors take part:
 
 - 🧑 **You** say what you want and make the final call.
 - 🤖 **Builder AI**, the AI coding agent you use, writes the code.
-- 🤖 **Reviewer AI**, a different AI model, checks the builder's work.
+- 🤖 **Reviewer AI**, a separate AI session with no tools, checks the builder's work.
 - ⚙️ **RaisQ** runs everything in between, and decides pass or fail with plain code.
 
 ```mermaid
@@ -80,7 +80,7 @@ A batch checks your setup before it starts, so it doesn't fail halfway through t
 
 RaisQ is built on a few ideas. They're why it works the way it does.
 
-- **Nothing grades its own work.** An AI checking its own code shares the blind spots that wrote it. So a different AI does the review, and plain code, not an AI, makes the final pass or fail call.
+- **Nothing grades its own work.** The builder never judges its own result. A separate AI session reviews it, seeing only the result and unable to change anything, and plain code, not an AI, makes the final pass or fail call. The reviewer can be any AI, even the builder's own model, but a different one shares fewer blind spots, so every result says when they're the same.
 - **Show the evidence.** The reviewer must quote the exact words it's judging, and RaisQ checks those words are really there. A verdict without evidence isn't a verdict.
 - **You decide what's true.** Facts about your project come from you. Anything the AI guessed is marked as a guess, and anything nobody knows is kept out instead of made up.
 - **Safe by design, not by settings.** The agent works in a sealed-off container, can't change the tests that judge it, and can't push, merge or deploy. None of that needs configuring. Running without the container takes one deliberate setting, and every result then says so.
