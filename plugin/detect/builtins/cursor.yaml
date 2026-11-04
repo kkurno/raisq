@@ -1,0 +1,17 @@
+name: cursor
+slot: builder
+vendor: cursor
+model: auto
+tool:
+  find: cursor-agent --version
+  install_hint: curl https://cursor.com/install -fsS | bash
+# Runs inside the container, unattended, as an unprivileged user.
+run: cursor-agent -p --force --trust --model auto --output-format text "$(cat {prompt})"
+install: curl -fsS https://cursor.com/install | bash
+# Your existing login, read from the macOS Keychain and passed in for one
+# attempt as the token Cursor's CLI reads. The refresh token stays here.
+login:
+  - env: CURSOR_AUTH_TOKEN
+    command: security find-generic-password -s "cursor-access-token" -w
+login_env: [CURSOR_API_KEY]
+image: node:22-bookworm

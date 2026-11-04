@@ -156,8 +156,8 @@ func Detect(dir string) Proposal {
 
 	// One-of slots. The critic must be a different model; prefer another vendor.
 	agents := []string{}
-	for _, a := range []string{"claude-code", "codex-cli"} {
-		bin := map[string]string{"claude-code": "claude", "codex-cli": "codex"}[a]
+	for _, a := range []string{"claude-code", "cursor"} {
+		bin := map[string]string{"claude-code": "claude", "cursor": "cursor-agent"}[a]
 		if onPath(bin) {
 			agents = append(agents, a)
 		}

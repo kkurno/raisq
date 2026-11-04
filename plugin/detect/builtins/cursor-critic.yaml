@@ -1,0 +1,8 @@
+name: cursor-critic
+slot: model
+vendor: cursor
+model: auto
+tool:
+  find: cursor-agent --version
+# Read-only and on the host: ask mode can't edit files or run commands.
+run: cursor-agent -p --mode ask --trust --model {model} --output-format text "$(cat)"

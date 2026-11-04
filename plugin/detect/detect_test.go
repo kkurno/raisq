@@ -8,7 +8,7 @@ import (
 )
 
 func TestDetectNextApp(t *testing.T) {
-	onPath = func(bin string) bool { return bin == "docker" || bin == "claude" || bin == "codex" }
+	onPath = func(bin string) bool { return bin == "docker" || bin == "claude" || bin == "cursor-agent" }
 	defer func() { onPath = func(bin string) bool { return false } }()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{
@@ -19,7 +19,7 @@ func TestDetectNextApp(t *testing.T) {
 	if len(p.Presets) != 1 || p.Presets[0] != "web" {
 		t.Fatalf("presets %v", p.Presets)
 	}
-	if p.Builder != "claude-code" || p.Critic != "codex-cli-critic" {
+	if p.Builder != "claude-code" || p.Critic != "cursor-critic" {
 		t.Fatalf("two vendors should split builder and critic: %s %s", p.Builder, p.Critic)
 	}
 	for _, f := range []string{"build.yaml", "test.yaml", "lint.yaml", "site.yaml", "playwright.yaml"} {

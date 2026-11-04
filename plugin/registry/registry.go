@@ -203,7 +203,7 @@ func (p *Project) isolation(builder command.File) (slot.Isolation, error) {
 		d.Bin = bin
 		d.LoginEnv = builder.LoginEnv
 		for _, l := range builder.Login {
-			if l.To == "" && l.File != "" {
+			if l.To == "" && l.Env == "" && l.File != "" {
 				l.To = "/home/raisq/" + strings.TrimPrefix(l.File, "~/")
 			}
 			d.Login = append(d.Login, l)

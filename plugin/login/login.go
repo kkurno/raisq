@@ -26,8 +26,11 @@ var ErrNotFound = errors.New("no login found")
 
 // Source is one login file the agent needs inside the container.
 type Source struct {
-	// To is where the agent expects it inside the container.
-	To string `yaml:"to"`
+	// To is where the agent expects it inside the container, as a file.
+	To string `yaml:"to,omitempty"`
+	// Env is the variable it goes in instead, for an agent that reads its
+	// login from the environment.
+	Env string `yaml:"env,omitempty"`
 	// File is where it is on this machine, such as on Linux.
 	File string `yaml:"file,omitempty"`
 	// Command prints it, for a login kept somewhere else, such as the macOS
@@ -53,6 +56,14 @@ func (s *Source) UnmarshalYAML(n *yaml.Node) error {
 	}
 	type plain Source
 	return n.Decode((*plain)(s))
+}
+
+// Where says where it goes inside, for messages.
+func (s Source) Where() string {
+	if s.Env != "" {
+		return "$" + s.Env
+	}
+	return s.To
 }
 
 // Describe says where it looks, for doctor.

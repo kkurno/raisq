@@ -65,7 +65,7 @@ func (d *Docker) Start(ctx context.Context, req slot.StartRequest) (slot.Session
 	if req.SpecDir != "" {
 		args = append(args, "-v", req.SpecDir+":"+guestSpec+":ro")
 	}
-	loginDir, logins, err := copyLogin(ctx, d.Login)
+	loginDir, logins, loginEnv, err := copyLogin(ctx, d.Login)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +92,27 @@ func (d *Docker) Start(ctx context.Context, req slot.StartRequest) (slot.Session
 			args = append(args, "-e", k)
 		}
 	}
+	if len(loginEnv) > 0 {
+		// A login read from the Keychain goes in through a file of variables,
+		// never on a command line, where any process could read it.
+		// Next to the copies, not among them: only the copies are mounted.
+		f := loginDir + ".env"
+		var b strings.Builder
+		for k, v := range loginEnv {
+			fmt.Fprintf(&b, "%s=%s\n", k, v)
+		}
+		if err := writePrivate(f, []byte(b.String())); err != nil {
+			os.RemoveAll(loginDir)
+			return nil, err
+		}
+		defer func() {
+			// The container has read it by the time run returns.
+			os.Remove(f)
+		}()
+		args = append(args, "--env-file", f)
+	}
 	args = append(args, "-e", "HOME="+guestHome, "-e", "NPM_CONFIG_PREFIX="+guestHome+"/.npm-global",
-		"-e", "PATH="+guestHome+"/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+		"-e", "PATH="+guestHome+"/.local/bin:"+guestHome+"/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 	args = append(args, d.Image, "sleep", "infinity")
 	if out, err := exec.CommandContext(ctx, d.Bin, args...).CombinedOutput(); err != nil {
 		os.RemoveAll(loginDir)
@@ -137,16 +156,33 @@ chown %[1]d:%[2]d %[3]s %[4]s %[5]s`, uid, gid, guestHome, guestWork, guestOut)
 // copyLogin writes each login into a private temporary folder and returns
 // where each copy goes inside. A login that isn't found is skipped: doctor
 // says so, and the agent says it isn't logged in.
-func copyLogin(ctx context.Context, ss []login.Source) (string, []slot.Mount, error) {
+func copyLogin(ctx context.Context, ss []login.Source) (string, []slot.Mount, map[string]string, error) {
 	if len(ss) == 0 {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 	dir, err := os.MkdirTemp("", "raisq-login-")
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	var out []slot.Mount
+	env := map[string]string{}
 	for i, src := range ss {
+		if src.Env != "" {
+			data, err := src.Read(ctx)
+			if errors.Is(err, login.ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				os.RemoveAll(dir)
+				return "", nil, nil, fmt.Errorf("bringing in the login for %s: %w", src.Where(), err)
+			}
+			if strings.ContainsAny(string(data), "\n\r") {
+				os.RemoveAll(dir)
+				return "", nil, nil, fmt.Errorf("the login for %s is more than one line, so it can't be a variable", src.Where())
+			}
+			env[src.Env] = string(data)
+			continue
+		}
 		rel := filepath.Join(fmt.Sprint(i), path.Base(src.To))
 		dst := filepath.Join(dir, rel)
 		if src.IsDir() {
@@ -161,11 +197,11 @@ func copyLogin(ctx context.Context, ss []login.Source) (string, []slot.Mount, er
 		}
 		if err != nil {
 			os.RemoveAll(dir)
-			return "", nil, fmt.Errorf("bringing in the login for %s: %w", src.To, err)
+			return "", nil, nil, fmt.Errorf("bringing in the login for %s: %w", src.Where(), err)
 		}
 		out = append(out, slot.Mount{Host: filepath.ToSlash(rel), Guest: src.To})
 	}
-	return dir, out, nil
+	return dir, out, env, nil
 }
 
 func writePrivate(dst string, data []byte) error {
@@ -275,6 +311,7 @@ func (s *Session) Stop(ctx context.Context) error {
 	err := exec.Command(s.d.Bin, "rm", "-f", s.name).Run()
 	if s.login != "" {
 		os.RemoveAll(s.login)
+		os.Remove(s.login + ".env")
 	}
 	return err
 }
