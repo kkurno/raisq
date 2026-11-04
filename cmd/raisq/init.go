@@ -140,7 +140,7 @@ func seedFacts(dir string, skip bool) error {
 		}
 		f := domain.Fact{ID: q.id, Kind: q.kind, Tag: domain.Gap}
 		if a != "" {
-			f = domain.Fact{ID: q.id, Text: a, Kind: q.kind, Tag: domain.Confirmed, SaidBy: "implementor", SaidOn: today}
+			f = domain.Fact{ID: q.id, Text: a, Kind: q.kind, Tag: domain.Confirmed, SaidBy: "you", SaidOn: today}
 		}
 		if err := proj.Store.SaveFact(f, "business"); err != nil {
 			return err

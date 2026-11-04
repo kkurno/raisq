@@ -77,7 +77,7 @@ func cmdFact(ctx context.Context, args []string) error {
 		fs := flags("fact " + args[0])
 		kind := fs.String("kind", "", "contact, hours, price, terms or rule")
 		topic := fs.String("topic", "", "file it goes in; default: the part of the id before /")
-		by := fs.String("by", "implementor", "who said it")
+		by := fs.String("by", "you", "who said it")
 		stakeholder := fs.Bool("needs-stakeholder", false, "only the stakeholder can confirm this; keep it inferred")
 		pos, err := parse(fs, args[1:])
 		if err != nil {
@@ -129,7 +129,7 @@ func cmdFact(ctx context.Context, args []string) error {
 	return usageErr{"raisq fact add|list|confirm"}
 }
 
-// cmdLearn turns a mistake into a check or a rubric (11), proposes retiring
+// cmdLearn turns a mistake into a check or a rubric, proposes retiring
 // lessons people keep overruling, and picks a sample of done tasks to re-read.
 func cmdLearn(ctx context.Context, args []string) error {
 	fs := flags("learn")
@@ -412,7 +412,7 @@ func slugify(s string) string {
 }
 
 // pluginAdd has a model draft a plugin for a tool RaisQ hasn't seen, tests it
-// against the slot's contract, and saves it only once a person approves (9.3).
+// against the slot's contract, and saves it only once a person approves.
 func pluginAdd(ctx context.Context, proj *registry.Project, args []string) error {
 	fs := flags("plugin add")
 	slotName := fs.String("slot", "", "the slot it fills: "+strings.Join(detect.Slots, ", "))

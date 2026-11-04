@@ -38,7 +38,7 @@ type Asker interface {
 	Confirm(prompt string) (bool, error)
 }
 
-// AddTask writes a task spec in two model calls with a person between (8.1).
+// AddTask writes a task spec in two model calls with a person between.
 func AddTask(ctx context.Context, d Deps, request string, outside string, ask Asker) (domain.TaskSpec, error) {
 	facts, err := d.Store.LoadFacts()
 	if err != nil {
@@ -117,7 +117,7 @@ func AddTask(ctx context.Context, d Deps, request string, outside string, ask As
 }
 
 // split makes one part per group of criteria, run in order on one branch,
-// and keeps the whole as a check-only task that waits for them (10).
+// and keeps the whole as a check-only task that waits for them.
 func split(d Deps, whole domain.TaskSpec, size int, added string) error {
 	if err := d.Store.SaveSpec(whole); err != nil {
 		return err
@@ -150,7 +150,7 @@ func split(d Deps, whole domain.TaskSpec, size int, added string) error {
 }
 
 // settle sorts a person's answers into the task's criteria and the project's
-// facts (8.1). raisq task uses it, and so does a watched run when the builder
+// facts. raisq task uses it, and so does a watched run when the builder
 // asks something: an answer is the same thing whenever it's given.
 func settle(ctx context.Context, d Deps, request string, spec *domain.TaskSpec, restsOn, answers []string,
 	facts domain.Facts, ask Asker) error {
@@ -180,9 +180,9 @@ func settle(ctx context.Context, d Deps, request string, spec *domain.TaskSpec, 
 			}
 			nf.ID = nf.Contradicts
 		}
-		f := domain.Fact{ID: nf.ID, Text: nf.Text, Kind: nf.Kind, Tag: domain.Confirmed, SaidBy: "implementor", SaidOn: today}
+		f := domain.Fact{ID: nf.ID, Text: nf.Text, Kind: nf.Kind, Tag: domain.Confirmed, SaidBy: "you", SaidOn: today}
 		if nf.Stakeholder {
-			f.Tag, f.Needs, f.SaidBy = domain.Inferred, "stakeholder", "implementor, for the stakeholder"
+			f.Tag, f.Needs, f.SaidBy = domain.Inferred, "stakeholder", "you, for the stakeholder"
 		}
 		if err := d.Store.SaveFact(f, nf.Topic); err != nil {
 			return err
@@ -321,7 +321,7 @@ func Review(ctx context.Context, d Deps, task, decision, note string) error {
 }
 
 // FactChanged sends back every ready or running task whose run relied on a
-// fact that changed (4.1).
+// fact that changed.
 func FactChanged(d Deps, id string) ([]string, error) {
 	names, err := d.Store.Tasks()
 	if err != nil {
