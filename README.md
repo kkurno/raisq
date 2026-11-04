@@ -4,7 +4,7 @@ Say it like "rescue". AI-built work isn't trusted until it can prove what it say
 
 RaisQ lets AI agents do project work while nobody is watching, then proves each result against a written spec before a person reviews it. You describe the work. An AI builds it, isolated from the rest of your machine. RaisQ checks it with your tests and with a second AI that must show its evidence. You read only what needs a person.
 
-**Status:** v0.1. Everything in the plan is built and tested end to end in Docker with scripted agents. Not yet run with a logged-in agent CLI or a real critic model: see [What's proven](#whats-proven).
+**Status:** v0.1. Everything in the plan is built, and both spikes pass with real models: Claude Code builds headless in Docker, and Claude judges as the critic. See [What's proven](#whats-proven).
 
 ## Install
 
@@ -81,10 +81,13 @@ Nothing to set up: log in to your agent CLI once, the way you normally do, and R
 | The critic's data block can't be closed by the builder's text | Use-case test |
 | The rings import only inwards | `arch_test.go` |
 
-| Not yet proven | Why | How to prove it |
-|---|---|---|
-| A real agent CLI builds a whole task headless in a container (spike S2) | Claude Code is proven to log in and answer inside the container, from this Mac's Keychain login with only its own fields. A full task with it hasn't been run. | `raisq init`, then `raisq run` |
-| A real model is good enough as the critic (spike S1) | Needs real model calls | `raisq bench critic`. It fails below the plan's bar: catch ≥90%, false fails ≤10%, quotes ≥95%. |
+### The two spikes, with real models
+
+**S1, the critic** (`raisq bench critic --runs 3`, Claude Opus through the `claude` CLI, no tools): **30 of 30** planted mistakes caught, **0 of 27** true claims failed, every quote found in the output. The planted mistakes include a wrong phone number, a stretched lead time, hours that don't match, a free-delivery promise nobody made, a "since 1998" nobody said, and a comment telling reviewers everything is confirmed.
+
+**S2, the builder** (Claude Sonnet through Claude Code, headless in Docker, logged in from this Mac's Keychain with only its own login fields): a four-criterion task on the bakery fixture **passed in 2 attempts**. Attempt 1 built the order page and passed every check and criterion, but its form showed nothing after submitting, which the `web/form-states` rubric failed. Attempt 2 got that one failure as its handoff, added a status message and a handler, and passed. The provenance it had already settled was reused, so attempt 2's critic made one call instead of two. The review pack listed two choices the spec didn't cover, including that the new handler acknowledges an order without storing it.
+
+Running the real agent found four things the scripted ones couldn't, all fixed and added to the bench: the critic judged text that was on a page before the task; it treated a form's own messages ("Order sent.") as claims about the business; it called a claim that dropped one word ("Cake") a contradiction; and a hung model call outlived its timeout, because killing `sh` didn't kill the agent it started.
 
 ## The plan
 
