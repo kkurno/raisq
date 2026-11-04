@@ -8,7 +8,8 @@ import (
 	"raisq/domain"
 )
 
-// ReviewPack is what the implementor reads, in the order they need it (4.4).
+// ReviewPack is what the person reviewing reads, in the order they need it:
+// what's unsure first, everything that passed last.
 func ReviewPack(d Deps, task, run string, rec RunRecord, last AttemptRecord) string {
 	var b strings.Builder
 	spec, _ := d.Store.LoadSpec(task)

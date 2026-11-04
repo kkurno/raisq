@@ -15,7 +15,7 @@ import (
 	"raisq/slot"
 )
 
-// Contract checks a plugin file against its slot's contract (9.3): the fields
+// Contract checks a plugin file against its slot's contract: the fields
 // the slot needs, no template left unfilled, and, where it's safe to, a run
 // against the slot's example. It returns what's wrong.
 func Contract(ctx context.Context, body, dir string) []string {

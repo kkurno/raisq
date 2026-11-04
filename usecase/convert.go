@@ -27,7 +27,7 @@ type converted struct {
 	Skipped []string `json:"skipped"`
 }
 
-// Convert turns a spec tool's file into a task spec and facts (8.3). A model
+// Convert turns a spec tool's file into a task spec and facts. A model
 // splits it; RaisQ checks every item quotes a line of the original, and every
 // line of the original is in some item or marked skipped. If anything is
 // missing, nothing is written.

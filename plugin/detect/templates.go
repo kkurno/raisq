@@ -2,7 +2,7 @@ package detect
 
 import "fmt"
 
-// Template is a starting plugin file for a slot (9.3).
+// Template is a starting plugin file for a slot.
 func Template(slot, name string) (string, error) {
 	t, ok := templates[slot]
 	if !ok {
@@ -22,7 +22,7 @@ tool:
   find: <command> --version
   install_hint: <how a person installs it>
 # Runs inside the container, unattended. {prompt} is the prompt file. It must
-# write /raisq/out/result.json before it exits (4.2).
+# write /raisq/out/result.json before it exits.
 run: <command that reads {prompt} and works in the current directory>
 install: <command that installs it in a fresh container, if the image lacks it>
 login: ["~/.<tool>/<credential file>:/root/.<tool>/<credential file>"]

@@ -19,7 +19,7 @@ type TestPlugin func(ctx context.Context, body string) []string
 
 // DraftPlugin asks a model for a plugin file from the slot's template and the
 // tool's own --help, tests it, and sends the failures back, up to tries times:
-// the same loop as building, applied to a plugin (9.3). It never saves.
+// the same loop as building, applied to a plugin. It never saves.
 func DraftPlugin(ctx context.Context, d Deps, tool, slotName, template, help, usage string, test TestPlugin, tries int) (PluginDraft, error) {
 	var dr PluginDraft
 	prompt := `Write a RaisQ plugin file for the tool below, filling the ` + slotName + ` slot.

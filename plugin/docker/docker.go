@@ -23,7 +23,7 @@ type Docker struct {
 	Bin   string // docker or podman
 	Image string
 	// Login is the agent login to bring in, and nothing else from the user's
-	// home (5.2). It's copied, never mounted, so nothing the builder writes
+	// home. It's copied, never mounted, so nothing the builder writes
 	// there reaches the host.
 	Login []login.Source
 	// LoginEnv names host variables to pass in when set, such as an OAuth

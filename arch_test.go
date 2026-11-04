@@ -9,7 +9,8 @@ import (
 	"testing"
 )
 
-// TestDependencyRule fails the build on any import pointing outwards (6.1).
+// TestDependencyRule fails the build on any import pointing outwards: the
+// rules import nothing, the flows import only the rules, plugins come last.
 func TestDependencyRule(t *testing.T) {
 	allowed := map[string][]string{
 		"domain":  {},

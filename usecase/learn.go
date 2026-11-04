@@ -13,7 +13,7 @@ import (
 )
 
 // RetireAfter is how many times a person may overrule a lesson before
-// raisq learn proposes retiring it (11).
+// raisq learn proposes retiring it.
 const RetireAfter = 3
 
 // Lesson is what raisq learn proposes from one mistake.
@@ -104,7 +104,7 @@ func runAt(ctx context.Context, d Deps, task, rev, cmd string) (bool, error) {
 	return r.Exit != 0, nil
 }
 
-// KeepLesson writes an approved lesson where checks and rubrics live (11).
+// KeepLesson writes an approved lesson where checks and rubrics live.
 func KeepLesson(d Deps, l Lesson) (string, error) {
 	if l.Check != "" {
 		if !l.Proven {
@@ -172,7 +172,7 @@ func ToRetire(d Deps) ([]domain.Rubric, error) {
 	return out, err
 }
 
-// SpotCheck picks a share of done tasks for a person to re-read (7.2).
+// SpotCheck picks a share of done tasks for a person to re-read.
 func SpotCheck(d Deps, share float64, rng *rand.Rand) ([]string, error) {
 	names, err := d.Store.Tasks()
 	if err != nil {

@@ -81,7 +81,7 @@ func run(ctx context.Context, args []string) error {
 	case "plugin":
 		return cmdPlugin(ctx, rest)
 	case "update":
-		// GitHub Releases is the only channel (6.5), and it needs a published
+		// GitHub Releases is the only channel, and it needs a published
 		// repo first; until then, update is a rebuild.
 		fmt.Println("  raisq " + version + ". No release channel is published yet: rebuild from the source with `go build -o ~/bin/raisq ./cmd/raisq`.")
 		return nil

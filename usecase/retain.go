@@ -10,7 +10,7 @@ import (
 
 // Prune removes run folders older than keep, except the latest run of every
 // task and every run of a parked task, whose evidence a person still needs
-// (7.2). It never touches a task's spec, state or history.
+// It never touches a task's spec, state or history.
 func Prune(d Deps, keep time.Duration) (int, error) {
 	if keep <= 0 {
 		keep = 30 * 24 * time.Hour

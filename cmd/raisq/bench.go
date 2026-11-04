@@ -158,7 +158,7 @@ func cmdBench(ctx context.Context, args []string) error {
 		d.Model.Name(), caught, planted, pct(caught, planted), falseFails, trues, pct(falseFails, trues),
 		pct(quotesOK, quotes), time.Since(start).Round(time.Second))
 	if pct(caught, planted) < 90 || pct(falseFails, trues) > 10 || pct(quotesOK, quotes) < 95 {
-		return fmt.Errorf("below the bar in section 13 (catch ≥90%%, false fails ≤10%%, quotes ≥95%%)")
+		return fmt.Errorf("below the bar: catch ≥90%%, false fails ≤10%%, quotes ≥95%%")
 	}
 	logf("✓ meets the bar")
 	return nil

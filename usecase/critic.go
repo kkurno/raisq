@@ -90,7 +90,7 @@ func (c Critic) Judge(ctx context.Context, in CriticInput) (CriticResult, error)
 	if err := c.ask(ctx, readPrompt(in, tag), &read, &res.Calls); err != nil {
 		return res, err
 	}
-	// A quote not found in the output is asked again once (4.3).
+	// A quote not found in the output is asked again once.
 	if bad := badQuotes(in.Output, read); len(bad) > 0 {
 		var again readAnswer
 		prompt := readPrompt(in, tag) + "\n\nThese quotes were not found word for word in the output. Quote the output exactly, or drop the item:\n- " + strings.Join(bad, "\n- ")
@@ -99,7 +99,7 @@ func (c Critic) Judge(ctx context.Context, in CriticInput) (CriticResult, error)
 		}
 	}
 	res.Coverage, res.Rubrics = read.Coverage, read.Rubrics
-	// Only what the task added is this task's to answer for (4.7). Text that
+	// Only what the task added is this task's to answer for. Text that
 	// was there before it, such as a page's existing header, isn't judged.
 	added := addedText(in.Output)
 	for _, cl := range read.Claims {

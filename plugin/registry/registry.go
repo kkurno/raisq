@@ -31,7 +31,7 @@ type Config struct {
 	Batch     string  `yaml:"batch,omitempty"`
 	SplitOver int     `yaml:"split_over,omitempty"`
 	SpotCheck float64 `yaml:"spot_check,omitempty"`
-	// KeepArtifacts is how long run folders are kept (7.2).
+	// KeepArtifacts is how long run folders are kept.
 	KeepArtifacts string `yaml:"keep_artifacts,omitempty"`
 }
 
@@ -120,7 +120,7 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 			return d, fmt.Errorf("raisq.yaml names builder %q, and there's no plugin file with slot: builder and that name", p.Config.Builder)
 		}
 		if critic.Vendor != "" && critic.Vendor == builderFile.Vendor && critic.Model == builderFile.Model {
-			return d, fmt.Errorf("the critic must be a different model from the builder (5.1): both are %s %s", critic.Vendor, critic.Model)
+			return d, fmt.Errorf("the critic must be a different model from the builder, or it shares its blind spots: both are %s %s", critic.Vendor, critic.Model)
 		}
 		a := agent.Agent{PluginName: builderFile.Name, Run: builderFile.Run, Install: builderFile.Install}
 		if builderFile.Tool != nil {

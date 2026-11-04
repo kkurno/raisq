@@ -12,7 +12,7 @@ import (
 )
 
 // PageText is the web preset's extractor: the text of the site's pages, as a
-// user reads it, for the pages whose text the task changed (4.7). It crawls
+// user reads it, for the pages whose text the task changed. It crawls
 // the running site from inside the session, so it needs `site`.
 type PageText struct {
 	Port  int

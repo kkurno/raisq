@@ -13,7 +13,7 @@ import (
 )
 
 // Prompt puts what changes least first, so a vendor's prompt cache reuses it
-// across attempts and tasks (4.7).
+// across attempts and tasks.
 func Prompt(d Deps, spec domain.TaskSpec, facts domain.Facts, p slot.Paths, prev *domain.Handoff) string {
 	var b strings.Builder
 	b.WriteString(`You are making one change to this project, unattended. Nobody can answer you while you work.

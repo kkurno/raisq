@@ -35,7 +35,7 @@ type Deps struct {
 	Manual   bool
 	Attempts int
 	// SplitOver is how many criteria a task may have before raisq task
-	// proposes splitting it (7.2).
+	// proposes splitting it.
 	SplitOver int
 	// Ask is a person at the terminal in a watched run. A batch leaves it nil,
 	// so a question parks the task instead of waiting.
@@ -283,7 +283,7 @@ func askNow(ctx context.Context, d Deps, task string, spec *domain.TaskSpec, fac
 	}
 	if r.Status == domain.ResultNeedsSomething {
 		d.log("The builder needs: %s", r.Needs)
-		d.log("Nothing is allowed automatically (5.3).")
+		d.log("Nothing is allowed automatically.")
 		a, err := d.Ask.Ask(fmt.Sprintf("Write a provider for it, in .raisq/plugins/ or, to allow it for this task only, .raisq/tasks/%s/plugins/. Then answer done, or deny.", task))
 		if err != nil {
 			return false, err

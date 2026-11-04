@@ -12,7 +12,7 @@ import (
 
 // GoAPI reports when the exported Go API changed. It compares `go doc` on the
 // task's result with the same listing at the base commit, which the baseline
-// records once per base like a render (4.7).
+// records once per base commit.
 type GoAPI struct {
 	CheckName string
 	Store     slot.Store
