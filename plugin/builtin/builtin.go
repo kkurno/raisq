@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"raisq/slot"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Diff is the built-in git-diff extractor. It returns only what the task

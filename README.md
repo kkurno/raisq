@@ -31,12 +31,10 @@ An AI that checks its own work shares the blind spots that produced it. Left una
 
 RaisQ is one executable. You need **git**, **Docker** (or Podman) and an **agent CLI** you're logged into, such as [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex](https://github.com/openai/codex).
 
-Download a binary for your platform from this repository's Releases, or build from source with Go 1.23 or later:
+Download a binary for your platform from [Releases](https://github.com/kkurno/raisq/releases), or install with Go 1.23 or later:
 
 ```
-git clone <this repository>
-cd raisq
-go build -o ~/bin/raisq ./cmd/raisq
+go install github.com/kkurno/raisq/cmd/raisq@latest
 ```
 
 RaisQ doesn't install your agent or Docker. `raisq doctor` says what's missing.

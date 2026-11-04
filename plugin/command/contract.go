@@ -11,8 +11,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/plugin/proc"
-	"raisq/slot"
+	"github.com/kkurno/raisq/plugin/proc"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Contract checks a plugin file against its slot's contract: the fields

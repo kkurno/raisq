@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 func TestFactsRevisions(t *testing.T) {

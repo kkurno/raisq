@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Contacts fails when a page shows a phone number or an email that isn't in

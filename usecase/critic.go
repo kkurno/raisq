@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // factsInline is how much fact text call 2 takes whole; past it, the critic

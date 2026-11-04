@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Deps are the plugins a flow uses, chosen by the registry.
@@ -141,7 +141,7 @@ func Run(ctx context.Context, d Deps, task string) (RunRecord, error) {
 	}
 	branch := st.Branch
 	if branch == "" {
-		branch = "raisq/" + task
+		branch = "github.com/kkurno/raisq/" + task
 	}
 	if st.CheckOnly {
 		d.Manual = true

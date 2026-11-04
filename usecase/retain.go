@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 // Prune removes run folders older than keep, except the latest run of every

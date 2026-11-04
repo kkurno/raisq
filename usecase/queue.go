@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 // Next is the first queued task, in the order added, whose After tasks are

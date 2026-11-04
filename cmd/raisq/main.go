@@ -9,10 +9,22 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 )
 
-var version = "0.1.0"
+// version is set by the release build. A `go install` build gets the
+// version Go recorded instead, in init below.
+var version = "dev"
+
+func init() {
+	if version != "dev" {
+		return
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		version = strings.TrimPrefix(bi.Main.Version, "v")
+	}
+}
 
 const usage = `raisq: AI-built work isn't trusted until it can prove what it says.
 
@@ -81,9 +93,8 @@ func run(ctx context.Context, args []string) error {
 	case "plugin":
 		return cmdPlugin(ctx, rest)
 	case "update":
-		// GitHub Releases is the only channel, and it needs a published
-		// repo first; until then, update is a rebuild.
-		fmt.Println("  raisq " + version + ". No release channel is published yet: rebuild from the source with `go build -o ~/bin/raisq ./cmd/raisq`.")
+		// RaisQ never fetches or installs itself; it says how.
+		fmt.Println("  raisq " + version + ". To update: go install github.com/kkurno/raisq/cmd/raisq@latest, or download a binary from https://github.com/kkurno/raisq/releases")
 		return nil
 	case "version", "--version":
 		fmt.Println("raisq", version)

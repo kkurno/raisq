@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
-	"raisq/plugin/registry"
-	"raisq/usecase"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/registry"
+	"github.com/kkurno/raisq/usecase"
 )
 
 func open() (*registry.Project, error) { return registry.Open(wd()) }
@@ -163,7 +163,7 @@ func manualReady(ctx context.Context, proj *registry.Project, task string) error
 	if err != nil {
 		return fmt.Errorf("no task %s", task)
 	}
-	branch := "raisq/" + task
+	branch := "github.com/kkurno/raisq/" + task
 	if _, err := proj.Git.BranchHead(ctx, branch); err != nil {
 		head, _ := proj.Git.Head(ctx)
 		return fmt.Errorf("make the change on branch %s first:\n    git switch -c %s %s\n  then commit, and run `raisq run --check %s`", branch, branch, short(head), task)

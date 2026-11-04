@@ -15,7 +15,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/plugin/proc"
+	"github.com/kkurno/raisq/plugin/proc"
 )
 
 // ValidFor is how long a login must stay valid once it's in a container: an

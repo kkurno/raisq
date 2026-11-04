@@ -7,6 +7,8 @@ Thanks for helping. Bug reports, plugins, and fixes to the docs are all welcome.
 You need Go 1.23 or later and git. Docker is needed only for the container tests.
 
 ```
+git clone https://github.com/kkurno/raisq
+cd raisq
 go build ./...
 go test ./...
 RAISQ_DOCKER_TEST=1 go test ./plugin/docker   # against a running Docker

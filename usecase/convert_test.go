@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"raisq/domain"
-	"raisq/slot/fake"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot/fake"
 )
 
 const specKit = `# Feature: Cake orders

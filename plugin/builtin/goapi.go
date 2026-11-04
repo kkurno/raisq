@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // GoAPI reports when the exported Go API changed. It compares `go doc` on the

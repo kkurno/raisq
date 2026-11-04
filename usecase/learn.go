@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // RetireAfter is how many times a person may overrule a lesson before

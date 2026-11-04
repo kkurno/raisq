@@ -4,7 +4,7 @@ RaisQ runs AI agents with their permission prompts off, so its isolation is a se
 
 ## Reporting
 
-Please don't open a public issue for a vulnerability. Report it privately through GitHub's **Report a vulnerability** button on the repository's Security tab.
+Please don't open a public issue for a vulnerability. Report it privately through [GitHub's private vulnerability reporting](https://github.com/kkurno/raisq/security/advisories/new).
 
 Include what you ran, what happened, and what you expected. We'll reply within a week.
 

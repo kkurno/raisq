@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	loginpkg "raisq/plugin/login"
-	"raisq/slot"
+	loginpkg "github.com/kkurno/raisq/plugin/login"
+	"github.com/kkurno/raisq/slot"
 )
 
 // TestIsolation needs a running Docker; it's skipped without one.

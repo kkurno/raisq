@@ -17,7 +17,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 type Files struct {

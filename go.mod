@@ -1,4 +1,4 @@
-module raisq
+module github.com/kkurno/raisq
 
 go 1.23
 

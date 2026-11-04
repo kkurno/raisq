@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"raisq/domain"
-	"raisq/plugin/git"
-	"raisq/plugin/store"
-	"raisq/slot"
-	"raisq/slot/fake"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/git"
+	"github.com/kkurno/raisq/plugin/store"
+	"github.com/kkurno/raisq/slot"
+	"github.com/kkurno/raisq/slot/fake"
 )
 
 type diffExtractor struct{}
@@ -119,7 +119,7 @@ func TestFailThenFix(t *testing.T) {
 			t.Errorf("review pack missing %q:\n%s", want, pack)
 		}
 	}
-	if out, _ := exec.Command("git", "-C", dir, "show", "raisq/t1:app.txt").Output(); !strings.Contains(string(out), "ok") {
+	if out, _ := exec.Command("git", "-C", dir, "show", "github.com/kkurno/raisq/t1:app.txt").Output(); !strings.Contains(string(out), "ok") {
 		t.Fatal("the branch should be in the project")
 	}
 }

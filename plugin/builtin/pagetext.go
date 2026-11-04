@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"raisq/slot"
+	"github.com/kkurno/raisq/slot"
 )
 
 // PageText is the web preset's extractor: the text of the site's pages, as a

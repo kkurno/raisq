@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"raisq/domain"
-	"raisq/plugin/git"
-	"raisq/plugin/store"
-	"raisq/slot/fake"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/git"
+	"github.com/kkurno/raisq/plugin/store"
+	"github.com/kkurno/raisq/slot/fake"
 )
 
 func TestLessonCheckMustBeProven(t *testing.T) {

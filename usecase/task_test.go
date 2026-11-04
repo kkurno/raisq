@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"raisq/domain"
-	"raisq/plugin/store"
-	"raisq/slot/fake"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/store"
+	"github.com/kkurno/raisq/slot/fake"
 )
 
 type answers struct{ a []string }

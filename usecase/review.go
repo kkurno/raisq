@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 // ReviewPack is what the person reviewing reads, in the order they need it:

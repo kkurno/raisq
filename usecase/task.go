@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 type Draft struct {
@@ -122,7 +122,7 @@ func split(d Deps, whole domain.TaskSpec, size int, added string) error {
 	if err := d.Store.SaveSpec(whole); err != nil {
 		return err
 	}
-	branch := "raisq/" + whole.Name
+	branch := "github.com/kkurno/raisq/" + whole.Name
 	var parts []string
 	for i := 0; i < len(whole.Criteria); i += size {
 		end := i + size

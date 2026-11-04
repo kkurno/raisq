@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
-	"raisq/usecase"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/usecase"
 )
 
 // benchCase is one diff with planted false facts (spike S1).

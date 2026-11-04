@@ -11,14 +11,14 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/plugin/agent"
-	"raisq/plugin/builtin"
-	"raisq/plugin/command"
-	"raisq/plugin/docker"
-	"raisq/plugin/git"
-	"raisq/plugin/store"
-	"raisq/slot"
-	"raisq/usecase"
+	"github.com/kkurno/raisq/plugin/agent"
+	"github.com/kkurno/raisq/plugin/builtin"
+	"github.com/kkurno/raisq/plugin/command"
+	"github.com/kkurno/raisq/plugin/docker"
+	"github.com/kkurno/raisq/plugin/git"
+	"github.com/kkurno/raisq/plugin/store"
+	"github.com/kkurno/raisq/slot"
+	"github.com/kkurno/raisq/usecase"
 )
 
 // Config is raisq.yaml: one-of slot choices, and defaults a project overrides.

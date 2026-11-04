@@ -15,8 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"raisq/plugin/login"
-	"raisq/slot"
+	"github.com/kkurno/raisq/plugin/login"
+	"github.com/kkurno/raisq/slot"
 )
 
 type Docker struct {

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"raisq/domain"
-	"raisq/slot"
-	"raisq/slot/fake"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
+	"github.com/kkurno/raisq/slot/fake"
 )
 
 func session(t *testing.T) slot.Session {

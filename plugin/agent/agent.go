@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"raisq/slot"
+	"github.com/kkurno/raisq/slot"
 )
 
 type Agent struct {

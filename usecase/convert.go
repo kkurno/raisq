@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 // ConvertedItem is one item the converter split out of a spec tool's file.

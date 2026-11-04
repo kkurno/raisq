@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"sync"
 
-	"raisq/plugin/proc"
-	"raisq/slot"
+	"github.com/kkurno/raisq/plugin/proc"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Local runs sessions on the host, for `isolation: none` on a machine that's

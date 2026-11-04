@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"raisq/domain"
-	"raisq/plugin/command"
-	"raisq/plugin/detect"
-	"raisq/plugin/login"
-	"raisq/plugin/proc"
-	"raisq/plugin/registry"
-	"raisq/slot"
-	"raisq/usecase"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/command"
+	"github.com/kkurno/raisq/plugin/detect"
+	"github.com/kkurno/raisq/plugin/login"
+	"github.com/kkurno/raisq/plugin/proc"
+	"github.com/kkurno/raisq/plugin/registry"
+	"github.com/kkurno/raisq/slot"
+	"github.com/kkurno/raisq/usecase"
 )
 
 func slotItem(md string) slot.ReportItem {

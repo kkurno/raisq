@@ -12,9 +12,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/domain"
-	"raisq/plugin/detect"
-	"raisq/plugin/registry"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/detect"
+	"github.com/kkurno/raisq/plugin/registry"
 )
 
 func cmdInit(ctx context.Context, args []string) error {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 func TestText(t *testing.T) {

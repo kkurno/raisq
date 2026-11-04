@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"raisq/domain"
+	"github.com/kkurno/raisq/domain"
 )
 
 // ErrUsageLimit is a builder or model saying its vendor's quota is used up.

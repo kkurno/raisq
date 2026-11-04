@@ -15,10 +15,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"raisq/domain"
-	"raisq/plugin/login"
-	"raisq/plugin/proc"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/plugin/login"
+	"github.com/kkurno/raisq/plugin/proc"
+	"github.com/kkurno/raisq/slot"
 )
 
 // File is one plugin file in .raisq/plugins/.

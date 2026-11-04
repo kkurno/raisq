@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"raisq/domain"
-	"raisq/slot"
+	"github.com/kkurno/raisq/domain"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Builder runs a function against the checkout on the host, as an agent would

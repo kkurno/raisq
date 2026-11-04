@@ -9,13 +9,15 @@ import (
 	"testing"
 )
 
+const module = "github.com/kkurno/raisq"
+
 // TestDependencyRule fails the build on any import pointing outwards: the
 // rules import nothing, the flows import only the rules, plugins come last.
 func TestDependencyRule(t *testing.T) {
 	allowed := map[string][]string{
 		"domain":  {},
-		"slot":    {"raisq/domain"},
-		"usecase": {"raisq/domain", "raisq/slot"},
+		"slot":    {module + "/domain"},
+		"usecase": {module + "/domain", module + "/slot"},
 	}
 	for ring, ok := range allowed {
 		err := filepath.Walk(ring, func(p string, info os.FileInfo, err error) error {
@@ -29,7 +31,7 @@ func TestDependencyRule(t *testing.T) {
 			}
 			for _, imp := range f.Imports {
 				path := strings.Trim(imp.Path.Value, `"`)
-				if !strings.HasPrefix(path, "raisq/") {
+				if !strings.HasPrefix(path, module+"/") {
 					continue
 				}
 				// Tests may use fakes and real plugins to exercise a ring.
