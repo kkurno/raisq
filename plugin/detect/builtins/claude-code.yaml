@@ -1,0 +1,30 @@
+name: claude-code
+slot: builder
+vendor: anthropic
+model: sonnet
+tool:
+  find: claude --version
+  install_hint: npm i -g @anthropic-ai/claude-code
+# Runs inside the container, unattended, as an unprivileged user.
+run: claude -p --model sonnet --dangerously-skip-permissions < {prompt}
+install: npm i -g @anthropic-ai/claude-code
+# Your existing login, copied in for one attempt and never mounted: a file on
+# Linux, the Keychain on macOS (the first time, macOS asks to allow it). Only
+# the fields below go in. The refresh token, and any other tool's tokens kept
+# alongside, such as MCP servers', stay on this machine, so what goes in
+# expires on its own and reaches nothing but Claude.
+login:
+  - to: /home/raisq/.claude/.credentials.json
+    file: ~/.claude/.credentials.json
+    command: security find-generic-password -s "Claude Code-credentials" -w
+    keep:
+      - claudeAiOauth.accessToken
+      - claudeAiOauth.expiresAt
+      - claudeAiOauth.scopes
+      - claudeAiOauth.subscriptionType
+      - claudeAiOauth.rateLimitTier
+    expires_at: claudeAiOauth.expiresAt
+    refresh: claude -p "Reply with ok" >/dev/null
+# Used instead, when set: an API key, or a token from `claude setup-token`.
+login_env: [ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN]
+image: node:22-bookworm

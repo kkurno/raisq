@@ -1,0 +1,9 @@
+- id: web/no-placeholder
+  ask: Does any text a user would see look like placeholder or sample text?
+  fail_if: yes
+- id: web/form-states
+  ask: Does every form show what happened after submitting, success or error?
+  fail_if: no
+- id: web/contact-consistent
+  ask: Is any contact detail shown in two places with different values?
+  fail_if: yes

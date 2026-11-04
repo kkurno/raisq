@@ -1,0 +1,6 @@
+name: go-api
+slot: checks
+priority: 25
+# Fails when an exported Go name is removed or changed. Adding is fine. A task
+# that's meant to break the API says `changes_api: true` in its spec.yaml.
+run: builtin:go-api

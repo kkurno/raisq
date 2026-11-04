@@ -1,0 +1,10 @@
+name: lighthouse
+slot: checks
+priority: 40
+tool:
+  find: npx lighthouse --version
+run: npx lighthouse http://localhost:3000 --quiet --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility --output=json --output-path=stdout
+needs: [site]
+result: {from: json, path: categories.performance.score, scale: 100}
+pass_at: 90
+median: 3

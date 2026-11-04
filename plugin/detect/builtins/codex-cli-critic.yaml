@@ -1,0 +1,10 @@
+name: codex-cli-critic
+slot: model
+vendor: openai
+model: gpt-5
+tool:
+  find: codex --version
+# Read-only and on the host. Codex prints its session to stdout, so the answer
+# is taken from the file it writes with only its last message.
+run: >-
+  f=$(mktemp) && codex exec --sandbox read-only --skip-git-repo-check --ephemeral --color never -m {model} -o "$f" - >/dev/null && cat "$f"; rm -f "$f"

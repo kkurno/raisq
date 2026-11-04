@@ -1,0 +1,9 @@
+name: claude-code-critic
+slot: model
+vendor: anthropic
+# An alias, so it works through any account or gateway; the CLI resolves it.
+model: opus
+tool:
+  find: claude --version
+# No tools at all: it can only answer. Runs on the host; prompt on stdin.
+run: claude -p --model {model} --tools "" --output-format text

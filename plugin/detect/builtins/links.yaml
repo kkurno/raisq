@@ -1,0 +1,5 @@
+name: links
+slot: checks
+run: builtin:links
+needs: [site]
+port: 3000

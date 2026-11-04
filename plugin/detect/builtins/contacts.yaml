@@ -1,0 +1,6 @@
+name: contacts
+slot: checks
+# Fails when a page shows a phone number or email that isn't in the facts.
+run: builtin:contacts
+needs: [site]
+port: 3000

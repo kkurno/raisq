@@ -1,0 +1,15 @@
+name: playwright
+slot: checks
+priority: 30
+tool:
+  find: npx playwright --version
+  install_hint: npm i -D @playwright/test
+run: npx playwright test --reporter=line
+run_one: npx playwright test --reporter=line {file}
+needs: [site]
+locks: ["playwright.config.*"]
+tests: ["e2e/**", "tests/**/*.spec.*", "**/*.e2e.*"]
+for_ai:
+  when: Changing anything a user sees in the browser
+  how: Add or update a Playwright test for every page you change.
+  never: Never update screenshots to make a test pass.
