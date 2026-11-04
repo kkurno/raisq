@@ -1,7 +1,14 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
+# A newer push to the same branch or PR replaces the run still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-24.04
@@ -14,19 +21,9 @@ jobs:
       # arch_test.go fails the build on any import pointing outwards.
       - run: go test ./...
       - run: RAISQ_DOCKER_TEST=1 go test ./plugin/docker
-  build:
-    needs: test
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        os: [linux, darwin, windows]
-        arch: [amd64, arm64]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: {go-version: "1.23"}
-      - run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o raisq-${{ matrix.os }}-${{ matrix.arch }} ./cmd/raisq
-      - uses: actions/upload-artifact@v7
-        with:
-          name: raisq-${{ matrix.os }}-${{ matrix.arch }}
-          path: raisq-${{ matrix.os }}-${{ matrix.arch }}
+      # Release binaries are built by release.yml; this only checks every
+      # platform still compiles.
+      - run: |
+          for os in linux darwin windows; do for arch in amd64 arm64; do
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/raisq
+          done; done
