@@ -163,7 +163,7 @@ func manualReady(ctx context.Context, proj *registry.Project, task string) error
 	if err != nil {
 		return fmt.Errorf("no task %s", task)
 	}
-	branch := "github.com/kkurno/raisq/" + task
+	branch := "raisq/" + task
 	if _, err := proj.Git.BranchHead(ctx, branch); err != nil {
 		head, _ := proj.Git.Head(ctx)
 		return fmt.Errorf("make the change on branch %s first:\n    git switch -c %s %s\n  then commit, and run `raisq run --check %s`", branch, branch, short(head), task)

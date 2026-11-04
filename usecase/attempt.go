@@ -141,7 +141,7 @@ func Run(ctx context.Context, d Deps, task string) (RunRecord, error) {
 	}
 	branch := st.Branch
 	if branch == "" {
-		branch = "github.com/kkurno/raisq/" + task
+		branch = "raisq/" + task
 	}
 	if st.CheckOnly {
 		d.Manual = true

@@ -122,7 +122,7 @@ func split(d Deps, whole domain.TaskSpec, size int, added string) error {
 	if err := d.Store.SaveSpec(whole); err != nil {
 		return err
 	}
-	branch := "github.com/kkurno/raisq/" + whole.Name
+	branch := "raisq/" + whole.Name
 	var parts []string
 	for i := 0; i < len(whole.Criteria); i += size {
 		end := i + size

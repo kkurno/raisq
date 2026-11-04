@@ -119,8 +119,11 @@ func TestFailThenFix(t *testing.T) {
 			t.Errorf("review pack missing %q:\n%s", want, pack)
 		}
 	}
-	if out, _ := exec.Command("git", "-C", dir, "show", "github.com/kkurno/raisq/t1:app.txt").Output(); !strings.Contains(string(out), "ok") {
-		t.Fatal("the branch should be in the project")
+	if out, _ := exec.Command("git", "-C", dir, "show", "raisq/t1:app.txt").Output(); !strings.Contains(string(out), "ok") {
+		t.Fatal("the work is on branch raisq/<task> in the project, which is what the docs tell people to merge")
+	}
+	if rec.Branch != "raisq/t1" {
+		t.Fatalf("the run's branch is %q, not raisq/t1", rec.Branch)
 	}
 }
 

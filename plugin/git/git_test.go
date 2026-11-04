@@ -52,7 +52,7 @@ func TestCheckoutCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, err := g.Prepare(ctx, "t1", "github.com/kkurno/raisq/t1", base)
+	dir, err := g.Prepare(ctx, "t1", "raisq/t1", base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,15 +97,15 @@ func TestCheckoutCycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := g.Bring(ctx, dir, "github.com/kkurno/raisq/t1"); err != nil {
+	if err := g.Bring(ctx, dir, "raisq/t1"); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := g.BranchHead(ctx, "github.com/kkurno/raisq/t1"); got != head {
+	if got, _ := g.BranchHead(ctx, "raisq/t1"); got != head {
 		t.Fatal("branch not brought into the project")
 	}
 
 	// A second attempt continues from the branch.
-	dir2, err := g.Prepare(ctx, "t1", "github.com/kkurno/raisq/t1", base)
+	dir2, err := g.Prepare(ctx, "t1", "raisq/t1", base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestAuditCatchesHook(t *testing.T) {
 	repo := newRepo(t)
 	g := New(repo, t.TempDir())
 	base, _ := g.Head(ctx)
-	dir, err := g.Prepare(ctx, "t1", "github.com/kkurno/raisq/t1", base)
+	dir, err := g.Prepare(ctx, "t1", "raisq/t1", base)
 	if err != nil {
 		t.Fatal(err)
 	}
