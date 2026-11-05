@@ -30,7 +30,7 @@ login:
     to: /home/raisq/.<tool>/<credential file>
     keep: [<the fields the agent needs>]
 login_env: [<API_KEY_VARIABLE>]
-image: node:22-bookworm
+image: node:{node}-bookworm
 `,
 	"model": `name: %s
 slot: model

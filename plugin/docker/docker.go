@@ -119,6 +119,8 @@ func (d *Docker) Start(ctx context.Context, req slot.StartRequest) (slot.Session
 		}()
 		args = append(args, "--env-file", f)
 	}
+	// Corepack fetches the project's pnpm or yarn without stopping to ask.
+	args = append(args, "-e", "COREPACK_ENABLE_DOWNLOAD_PROMPT=0")
 	args = append(args, "-e", "HOME="+guestHome, "-e", "NPM_CONFIG_PREFIX="+guestHome+"/.npm-global",
 		"-e", "PATH="+guestHome+"/.local/bin:"+guestHome+"/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 	args = append(args, d.Image, "sleep", "infinity")
@@ -148,7 +150,10 @@ if ! getent passwd %[1]d >/dev/null; then
   useradd -m -d %[3]s -u %[1]d -g %[2]d raisq 2>/dev/null || adduser -D -h %[3]s -u %[1]d -G "$(getent group %[2]d | cut -d: -f1)" raisq
 fi
 mkdir -p %[3]s
-chown %[1]d:%[2]d %[3]s %[4]s %[5]s`, uid, gid, guestHome, guestWork, guestOut)
+chown %[1]d:%[2]d %[3]s %[4]s %[5]s
+# pnpm and yarn at the version package.json's packageManager names. Corepack
+# writes to the image's bin folder, so it's set up here, as root, once.
+if command -v corepack >/dev/null 2>&1; then corepack enable >/dev/null 2>&1 || true; fi`, uid, gid, guestHome, guestWork, guestOut)
 	for _, m := range s.logins {
 		script += fmt.Sprintf("\nmkdir -p %[1]s && cp -a %[2]s %[3]s && chown -R %[4]d:%[5]d %[6]s",
 			shq(path.Dir(m.Guest)), shq(path.Join(guestLogin, m.Host)), shq(m.Guest), uid, gid, shq(guestHome))

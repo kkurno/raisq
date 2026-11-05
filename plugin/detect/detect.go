@@ -228,9 +228,11 @@ func DetectMachine() Machine {
 	return p
 }
 
+// testsFound is whether a check runs tests: one that can catch a behaviour
+// change. A build, a lint or a type check passes on code that's wrong.
 func testsFound(p Proposal) bool {
-	for name := range p.Files {
-		if strings.Contains(p.Files[name], "slot: checks") {
+	for _, body := range p.Files {
+		if strings.Contains(body, "slot: checks") && strings.Contains(body, "\ntests:") {
 			return true
 		}
 	}

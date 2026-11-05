@@ -272,9 +272,15 @@ func (p *Project) isolation(builder command.File) (slot.Isolation, error) {
 			image = f.Image
 		}
 		if image == "" {
-			image = "node:22-bookworm"
+			image = "node:{node}-bookworm"
 		}
-		d := docker.New(image)
+		// {node} is the Node major the project asks for, so the container
+		// runs what the project's own tooling expects.
+		node := detect.NodeMajor(p.Dir)
+		if node == "" {
+			node = detect.DefaultNode
+		}
+		d := docker.New(strings.ReplaceAll(image, "{node}", node))
 		d.Bin = bin
 		d.LoginEnv = builder.LoginEnv
 		for _, l := range builder.Login {

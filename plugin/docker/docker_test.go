@@ -85,3 +85,27 @@ func TestLoginEnvReplacesTheCopiedLogin(t *testing.T) {
 		t.Fatalf("the login variable should be inside, got %q", r.Output)
 	}
 }
+
+// A pnpm project gets pnpm at the version its packageManager names, which a
+// Node image doesn't ship and the unprivileged user can't install itself.
+func TestPackageManagerFromThePackage(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	ctx := context.Background()
+	d := New("node:22-bookworm")
+	if err := d.Available(ctx); err != nil {
+		t.Skip(err)
+	}
+	work := t.TempDir()
+	os.WriteFile(filepath.Join(work, "package.json"), []byte(`{"name":"x","packageManager":"pnpm@9.12.0"}`), 0o644)
+	s, err := d.Start(ctx, slot.StartRequest{Checkout: work, OutDir: t.TempDir(), Label: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop(ctx)
+	r, err := s.Exec(ctx, "pnpm --version", nil)
+	if err != nil || r.Exit != 0 || !strings.Contains(r.Output, "9.12.0") {
+		t.Fatalf("want pnpm 9.12.0 in the container, got %v %+v", err, r)
+	}
+}

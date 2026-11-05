@@ -14,4 +14,5 @@ login:
   - env: CURSOR_AUTH_TOKEN
     command: security find-generic-password -s "cursor-access-token" -w
 login_env: [CURSOR_API_KEY]
-image: node:22-bookworm
+# {node} is the Node version the project asks for (.nvmrc, engines), else 22.
+image: node:{node}-bookworm
