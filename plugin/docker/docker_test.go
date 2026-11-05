@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	loginpkg "github.com/kkurno/raisq/plugin/login"
 	"github.com/kkurno/raisq/slot"
@@ -107,5 +108,45 @@ func TestPackageManagerFromThePackage(t *testing.T) {
 	r, err := s.Exec(ctx, "pnpm --version", nil)
 	if err != nil || r.Exit != 0 || !strings.Contains(r.Output, "9.12.0") {
 		t.Fatalf("want pnpm 9.12.0 in the container, got %v %+v", err, r)
+	}
+}
+
+// A provider with image: runs a service beside the session for the checks,
+// reachable by the provider's name, and gone when the session stops.
+func TestServiceBesideTheSession(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	ctx := context.Background()
+	d := New("alpine:3.20")
+	if err := d.Available(ctx); err != nil {
+		t.Skip(err)
+	}
+	s, err := d.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir(), Label: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sess := s.(*Session)
+	if err := sess.Service(ctx, "cache", "redis:7-alpine", nil); err != nil {
+		t.Fatal(err)
+	}
+	ok := false
+	for i := 0; i < 30 && !ok; i++ {
+		r, _ := s.Exec(ctx, `printf 'PING\r\n' | nc -w 2 cache 6379`, nil)
+		ok = strings.Contains(r.Output, "PONG")
+		if !ok {
+			time.Sleep(time.Second)
+		}
+	}
+	if !ok {
+		t.Fatal("the service should answer at its name from the session")
+	}
+	svc, network := sess.svcs[0], sess.net
+	s.Stop(ctx)
+	if exec.Command("docker", "inspect", svc).Run() == nil {
+		t.Fatal("the service must stop with the session")
+	}
+	if exec.Command("docker", "network", "inspect", network).Run() == nil {
+		t.Fatal("the session's network must go with it")
 	}
 }

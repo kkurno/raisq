@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kkurno/raisq/domain"
@@ -135,5 +136,50 @@ func TestContract(t *testing.T) {
 		if (len(bad) == 0) != c.ok {
 			t.Errorf("%s: want ok=%v, got %v", c.name, c.ok, bad)
 		}
+	}
+}
+
+// A check in one package of a monorepo runs there, and its globs and single
+// test file are relative to that package, so RaisQ can still lock its config
+// and prove a test the builder adds.
+func TestCheckInADir(t *testing.T) {
+	proj := t.TempDir()
+	os.MkdirAll(filepath.Join(proj, "apps", "api", "test"), 0o755)
+	write(t, filepath.Join(proj, "apps", "api"), "marker", "api")
+	write(t, filepath.Join(proj, "apps", "api", "test"), "a.spec.ts", "")
+	s, _ := fake.Isolation{}.Start(context.Background(), slot.StartRequest{Checkout: proj, OutDir: t.TempDir()})
+	c := Check{F: File{Name: "api-test", Slot: "checks", Dir: "apps/api/",
+		Run: "test -f marker", RunOne: "test -f {file}", Tests: []string{"**/*.spec.ts"}, Locks: []string{"jest.config.*"}}}
+	if r := c.Run(context.Background(), s, nil); r.Status != domain.CheckPass {
+		t.Fatalf("the check should run in its dir: %+v", r)
+	}
+	if got := c.Tests(); len(got) != 1 || got[0] != "apps/api/**/*.spec.ts" {
+		t.Fatalf("tests should be relative to the project: %v", got)
+	}
+	if got := c.Locks(); len(got) != 1 || got[0] != "apps/api/jest.config.*" {
+		t.Fatalf("locks should be relative to the project: %v", got)
+	}
+	if r, ok := c.RunOne(context.Background(), s, nil, "apps/api/test/a.spec.ts"); !ok || r.Status != domain.CheckPass {
+		t.Fatalf("one test file runs by its path in the dir: %+v", r)
+	}
+}
+
+// A service the checks need, where the isolation can't start one, blocks with
+// what to do; it never quietly runs the checks without it.
+func TestServiceNeedsAContainerTool(t *testing.T) {
+	p := Provider{F: File{Name: "postgres", Slot: "provides", Image: "postgres:16"}}
+	_, err := p.Start(context.Background(), session(t))
+	if err == nil || !strings.Contains(err.Error(), "docker or podman") {
+		t.Fatalf("want an error saying what to use, got %v", err)
+	}
+}
+
+// A check's own env sets where things are; what a provider injects wins, so a
+// committed file can't override a secret.
+func TestCheckEnv(t *testing.T) {
+	c := Check{F: File{Name: "e", Slot: "checks", Run: `[ "$DB" = "postgres" ] && [ "$TOKEN" = "secret" ]`,
+		Env: map[string]string{"DB": "postgres", "TOKEN": "from-file"}}}
+	if r := c.Run(context.Background(), session(t), map[string]string{"TOKEN": "secret"}); r.Status != domain.CheckPass {
+		t.Fatalf("want the check's env plus the provider's, provider winning: %+v", r)
 	}
 }

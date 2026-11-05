@@ -264,7 +264,11 @@ func copyDir(src, dst string) error {
 }
 
 type Session struct {
-	d      *Docker
+	d *Docker
+	// net is the session's own network, made when it starts a service, so a
+	// service is reachable by name from the session and from nothing else.
+	net    string
+	svcs   []string
 	name   string
 	host   string
 	out    string
@@ -320,8 +324,42 @@ func (s *Session) URL(port int) (string, error) {
 	return "http://" + addr, nil
 }
 
+// Service starts a container from image beside the session, reachable from it
+// at host name. It runs only after the builder has exited, as every provider
+// does, and stops with the session.
+func (s *Session) Service(ctx context.Context, name, image string, env map[string]string) error {
+	if s.net == "" {
+		s.net = s.name + "-net"
+		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "create", s.net).CombinedOutput(); err != nil {
+			s.net = ""
+			return fmt.Errorf("making a network for %s: %s", name, strings.TrimSpace(string(out)))
+		}
+		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "connect", s.net, s.name).CombinedOutput(); err != nil {
+			return fmt.Errorf("joining the network for %s: %s", name, strings.TrimSpace(string(out)))
+		}
+	}
+	cname := s.name + "-" + sanitize(name)
+	args := []string{"run", "-d", "--rm", "--name", cname, "--network", s.net, "--network-alias", name,
+		"--security-opt", "no-new-privileges"}
+	for k, v := range env {
+		args = append(args, "-e", k+"="+v)
+	}
+	args = append(args, image)
+	if out, err := exec.CommandContext(ctx, s.d.Bin, args...).CombinedOutput(); err != nil {
+		return fmt.Errorf("starting %s (%s): %s", name, image, strings.TrimSpace(string(out)))
+	}
+	s.svcs = append(s.svcs, cname)
+	return nil
+}
+
 func (s *Session) Stop(ctx context.Context) error {
+	for _, c := range s.svcs {
+		_ = exec.Command(s.d.Bin, "rm", "-f", c).Run()
+	}
 	err := exec.Command(s.d.Bin, "rm", "-f", s.name).Run()
+	if s.net != "" {
+		_ = exec.Command(s.d.Bin, "network", "rm", s.net).Run()
+	}
 	if s.login != "" {
 		os.RemoveAll(s.login)
 		os.Remove(s.login + ".env")

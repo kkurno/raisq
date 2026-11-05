@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -23,9 +24,12 @@ import (
 
 // File is one plugin file in .raisq/plugins/.
 type File struct {
-	Name     string   `yaml:"name"`
-	Slot     string   `yaml:"slot"`
-	Run      string   `yaml:"run"`
+	Name string `yaml:"name"`
+	Slot string `yaml:"slot"`
+	Run  string `yaml:"run"`
+	// Dir is the folder, relative to the project, a check runs in, such as
+	// one package of a monorepo. Its tests and locks globs are relative to it.
+	Dir      string   `yaml:"dir,omitempty"`
 	RunOne   string   `yaml:"run_one,omitempty"`
 	Priority int      `yaml:"priority,omitempty"`
 	Needs    []string `yaml:"needs,omitempty"`
@@ -43,6 +47,10 @@ type File struct {
 	From  string `yaml:"from,omitempty"`
 	Ready string `yaml:"ready,omitempty"`
 	Port  int    `yaml:"port,omitempty"`
+	// Env is a check's environment, or a service container's for a provider
+	// with image:. It's for settings, such as where the database is; a
+	// secret comes from a provider, never a committed file.
+	Env map[string]string `yaml:"env,omitempty"`
 	// builder and model
 	Login    []login.Source `yaml:"login,omitempty"`
 	LoginEnv []string       `yaml:"login_env,omitempty"`
@@ -122,19 +130,42 @@ type Check struct{ F File }
 func (c Check) Name() string    { return c.F.Name }
 func (c Check) Priority() int   { return c.F.Priority }
 func (c Check) Needs() []string { return c.F.Needs }
-func (c Check) Locks() []string { return c.F.Locks }
-func (c Check) Tests() []string { return c.F.Tests }
+func (c Check) Locks() []string { return c.inDir(c.F.Locks) }
+func (c Check) Tests() []string { return c.inDir(c.F.Tests) }
+
+// inDir makes globs written relative to dir: relative to the project, which
+// is how RaisQ restores locks and matches new tests to their check.
+func (c Check) inDir(globs []string) []string {
+	if c.F.Dir == "" {
+		return globs
+	}
+	out := make([]string, len(globs))
+	for i, g := range globs {
+		out[i] = path.Join(c.dir(), g)
+	}
+	return out
+}
+
+func (c Check) dir() string { return path.Clean(strings.Trim(c.F.Dir, "/")) }
+
+// command runs line in the check's dir.
+func (c Check) command(line string) string {
+	if c.F.Dir == "" {
+		return line
+	}
+	return "cd " + shellQuote(c.dir()) + " && " + line
+}
 
 func (c Check) Run(ctx context.Context, s slot.Session, env map[string]string) domain.CheckResult {
 	n := c.F.Median
 	if n <= 1 {
-		return c.once(ctx, s, env, c.F.Run)
+		return c.once(ctx, s, env, c.command(c.F.Run))
 	}
 	// A score that varies runs n times and the median counts.
 	var scores []float64
 	var last domain.CheckResult
 	for i := 0; i < n; i++ {
-		last = c.once(ctx, s, env, c.F.Run)
+		last = c.once(ctx, s, env, c.command(c.F.Run))
 		if last.Status == domain.CheckBlocked {
 			return last
 		}
@@ -156,10 +187,25 @@ func (c Check) RunOne(ctx context.Context, s slot.Session, env map[string]string
 	if c.F.RunOne == "" {
 		return domain.CheckResult{}, false
 	}
-	return c.once(ctx, s, env, strings.ReplaceAll(c.F.RunOne, "{file}", shellQuote(file))), true
+	// file is relative to the project; the check runs in its dir.
+	if c.F.Dir != "" {
+		file = strings.TrimPrefix(file, c.dir()+"/")
+	}
+	return c.once(ctx, s, env, c.command(strings.ReplaceAll(c.F.RunOne, "{file}", shellQuote(file)))), true
 }
 
 func (c Check) once(ctx context.Context, s slot.Session, env map[string]string, cmd string) domain.CheckResult {
+	if len(c.F.Env) > 0 {
+		merged := map[string]string{}
+		for k, v := range c.F.Env {
+			merged[k] = v
+		}
+		// What a provider injects, such as a test secret, wins.
+		for k, v := range env {
+			merged[k] = v
+		}
+		env = merged
+	}
 	r, err := s.Exec(ctx, cmd, env)
 	res := domain.CheckResult{Name: c.F.Name, Output: r.Output}
 	switch {
@@ -275,6 +321,15 @@ func (p Provider) Start(ctx context.Context, s slot.Session) (map[string]string,
 			}
 		}
 	}
+	if p.F.Image != "" {
+		sv, ok := s.(slot.Servicer)
+		if !ok {
+			return nil, fmt.Errorf("%s needs a service container (image: %s), and this isolation can't start one: use docker or podman", p.F.Name, p.F.Image)
+		}
+		if err := sv.Service(ctx, p.F.Name, p.F.Image, p.F.Env); err != nil {
+			return nil, err
+		}
+	}
 	if p.F.Run != "" {
 		if err := s.Background(ctx, p.F.Run, env); err != nil {
 			return nil, err
@@ -288,10 +343,16 @@ func (p Provider) Start(ctx context.Context, s slot.Session) (map[string]string,
 	return env, nil
 }
 
-func waitReady(ctx context.Context, s slot.Session, url string) error {
+// waitReady waits until ready answers: a URL that responds, or a command that
+// exits 0, such as a database's own readiness probe.
+func waitReady(ctx context.Context, s slot.Session, ready string) error {
+	probe := ready
+	if strings.HasPrefix(ready, "http://") || strings.HasPrefix(ready, "https://") {
+		probe = "curl -fsS -o /dev/null " + shellQuote(ready) + " || wget -q -O /dev/null " + shellQuote(ready)
+	}
 	deadline := time.Now().Add(3 * time.Minute)
 	for time.Now().Before(deadline) {
-		r, err := s.Exec(ctx, "curl -fsS -o /dev/null "+shellQuote(url)+" || wget -q -O /dev/null "+shellQuote(url), nil)
+		r, err := s.Exec(ctx, probe, nil)
 		if err == nil && r.Exit == 0 {
 			return nil
 		}
@@ -301,7 +362,7 @@ func waitReady(ctx context.Context, s slot.Session, url string) error {
 		case <-time.After(2 * time.Second):
 		}
 	}
-	return fmt.Errorf("%s never became ready", url)
+	return fmt.Errorf("%s never became ready", ready)
 }
 
 // --- extractors ---

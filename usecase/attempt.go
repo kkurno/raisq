@@ -727,6 +727,9 @@ func startProviders(ctx context.Context, d Deps, s slot.Session) (map[string]map
 
 func envFor(c slot.Check, env map[string]map[string]string) map[string]string {
 	out := map[string]string{}
+	for k, v := range env[baseEnv] {
+		out[k] = v
+	}
 	for _, n := range c.Needs() {
 		for k, v := range env[n] {
 			out[k] = v
@@ -735,10 +738,17 @@ func envFor(c slot.Check, env map[string]map[string]string) map[string]string {
 	return out
 }
 
+// baseEnv carries RAISQ_BASE, the commit the task started from, to every
+// check, so a slow one can narrow itself with its own tool. RaisQ still runs
+// every check: it can't know what a change affects. The baseline run has no
+// base, so a check narrowing on it runs in full there.
+const baseEnv = "\x00base"
+
 // runChecks restores every check's locked files from before the task, runs
 // every check, then proves each test the builder added.
 func runChecks(ctx context.Context, d Deps, s slot.Session, dir, baseCommit string, base domain.Baseline,
 	env map[string]map[string]string) (domain.CheckOutcome, error) {
+	env[baseEnv] = map[string]string{"RAISQ_BASE": baseCommit}
 	var locks, tests []string
 	for _, c := range d.Checks {
 		locks = append(locks, c.Locks()...)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -41,8 +42,11 @@ func Contract(ctx context.Context, body, dir string) []string {
 	fields, ok := need[f.Slot]
 	if f.Slot == "provides" {
 		ok = true
-		if f.Run == "" && f.From == "" {
-			bad = append(bad, "a provider needs run or from")
+		if f.Run == "" && f.From == "" && f.Image == "" {
+			bad = append(bad, "a provider needs run, from or image")
+		}
+		if f.Image != "" && f.For == "builder" {
+			bad = append(bad, "a service (image:) is for the checks, never the builder")
 		}
 		if f.For == "builder" && (f.From == "" || !strings.HasSuffix(f.From, ":ro")) {
 			bad = append(bad, "a builder provider is a read-only mount: from: host:<path>:ro")
@@ -56,6 +60,9 @@ func Contract(ctx context.Context, body, dir string) []string {
 		if strings.TrimSpace(have[k]) == "" {
 			bad = append(bad, "the "+f.Slot+" slot needs "+k)
 		}
+	}
+	if f.Dir != "" && (strings.HasPrefix(f.Dir, "/") || strings.Contains("/"+f.Dir+"/", "/../")) {
+		bad = append(bad, "dir is a folder inside the project, such as apps/api")
 	}
 	if f.Slot == "builder" && !strings.Contains(f.Run, "{prompt}") {
 		bad = append(bad, "a builder's run must read {prompt}")
@@ -89,6 +96,11 @@ func Contract(ctx context.Context, body, dir string) []string {
 		s, err := hostSession(dir)
 		if err != nil {
 			return []string{err.Error()}
+		}
+		if f.Dir != "" {
+			if info, err := os.Stat(filepath.Join(dir, f.Dir)); err != nil || !info.IsDir() {
+				return []string{"dir " + f.Dir + " isn't a folder in the project"}
+			}
 		}
 		if r := (Check{F: f}).Run(ctx, s, nil); r.Status == "blocked" {
 			return []string{"the example run couldn't find its tool: " + strings.TrimSpace(r.Output)}

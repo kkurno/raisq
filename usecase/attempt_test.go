@@ -457,3 +457,27 @@ func TestStopAfterTheBuildRequeues(t *testing.T) {
 		t.Fatalf("an interrupted task goes back to the queue, got %s", st.State)
 	}
 }
+
+// A check can narrow itself to what changed since the base, which it gets
+// as RAISQ_BASE; on the baseline it gets none, so it runs in full.
+func TestChecksGetTheBaseCommit(t *testing.T) {
+	dir, s := project(t)
+	b := &fake.Builder{Fn: func(n int, wd, prompt string) (domain.Result, []domain.Choice) {
+		write(t, wd, "app.txt", "ok\n")
+		return domain.Result{Status: domain.ResultDone}, nil
+	}}
+	d := deps(t, dir, s, b, critic())
+	out, _ := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	base := strings.TrimSpace(string(out))
+	seen := filepath.Join(t.TempDir(), "seen")
+	d.Checks = append(d.Checks, fake.Check{CheckName: "narrow", Cmd: `echo "[$RAISQ_BASE]" >> ` + seen})
+	_, err := Run(context.Background(), d, "t1")
+	must(t, err)
+	data, _ := os.ReadFile(seen)
+	if !strings.Contains(string(data), "["+base+"]") {
+		t.Fatalf("an attempt's checks should get RAISQ_BASE=%s, saw:\n%s", base, data)
+	}
+	if !strings.Contains(string(data), "[]") {
+		t.Fatalf("the baseline has no base to narrow to, saw:\n%s", data)
+	}
+}

@@ -46,6 +46,24 @@ tests: ["**/*.test.*", "**/*.spec.*"]
 | `tests` | Globs of this check's test files: restored from before the task, and the ones the agent added are proven |
 | `locks` | Globs of files that configure the check: restored from before the task, so the agent can't loosen it |
 | `needs` | Providers to start first, such as `[site]` |
+| `dir` | The folder it runs in, such as `apps/api` in a monorepo. `tests`, `locks` and `{file}` are then relative to it. |
+| `env` | Settings for the command, such as `{DATABASE_URL: postgresql://postgres:test@postgres:5432/app}`. It's committed, so never put a secret here: a secret comes from a provider. |
+
+Every check gets `RAISQ_BASE`, the commit the task started from, so a slow one can narrow itself with its own tool: `turbo run test --filter="...[$RAISQ_BASE]"`. On the run that measures what already failed, it's empty, so the check runs in full.
+
+A check in one package of a monorepo:
+
+```yaml
+name: api-test
+slot: checks
+dir: apps/api
+run: pnpm exec prisma generate && pnpm exec jest
+run_one: pnpm exec jest {file}
+tests: ["**/*.spec.ts"]
+locks: ["jest.config.*"]
+env: {DATABASE_URL: "postgresql://postgres:test@postgres:5432/app"}
+needs: [postgres]
+```
 
 A check whose result is a number:
 
@@ -85,7 +103,19 @@ port: 3000
 ready: http://localhost:3000
 ```
 
-`port` is where it listens, and `ready` is a URL RaisQ waits for before running the checks that need it.
+`port` is where it listens, and `ready` is what RaisQ waits for before running the checks that need it: a URL that responds, or a command that exits 0.
+
+A service in its own container, such as a database, started beside the checks after the agent has exited:
+
+```yaml
+name: postgres
+slot: provides
+image: postgres:16
+env: {POSTGRES_PASSWORD: test, POSTGRES_DB: app}
+ready: pg_isready -h postgres
+```
+
+The checks reach it at the provider's name, here `postgres`, so a check's `env` can point at it, as `api-test` above does. It's stopped with the attempt, and only the checks can reach it. It needs Docker or Podman; with `isolation: none`, a check that needs it is blocked.
 
 A secret for the checks only, read on your machine and given to the checks as environment after the agent has exited:
 

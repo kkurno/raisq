@@ -112,6 +112,13 @@ type Extractor interface {
 	Extract(ctx context.Context, req ExtractRequest) (string, error)
 }
 
+// Servicer is a session that can start a service container beside it, such as
+// a database for the checks. The service is reachable by name from the
+// session, and stops with it.
+type Servicer interface {
+	Service(ctx context.Context, name, image string, env map[string]string) error
+}
+
 // Needer is an extractor that needs a provider started first, as a check does.
 type Needer interface {
 	Needs() []string
