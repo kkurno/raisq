@@ -2,7 +2,7 @@
 
 **Let an AI agent code for you, and only read the results that are worth your time.**
 
-You give RaisQ a task. It has an AI coding agent build it, then checks the work before you ever see it. If the work is wrong, RaisQ tells the agent exactly what to fix and lets it try again. You only review work that has already passed.
+You give RaisQ a task. An AI coding agent builds it, and RaisQ checks the work before you ever see it. If the work is wrong, the agent is told exactly what to fix and tries again. You only review work that has already passed.
 
 Say it like *rescue*.
 
@@ -48,25 +48,74 @@ flowchart TD
     parked -. "Answer or<br/>send back" .-> build
 ```
 
-1. **Build.** 🤖 The builder AI writes the code in a sealed-off container that ⚙️ RaisQ sets up, away from the rest of your computer.
+1. **Build.** 🤖 The builder AI writes the code in a sealed-off container that ⚙️ RaisQ sets up, away from the rest of your computer. If it needs you, for example with a question, the task is parked.
 2. **Test.** ⚙️ RaisQ runs your project's tests as they were before the agent started, so the builder can't pass by editing them.
 3. **Review.** 🤖 The reviewer AI checks that each requirement is met and that each fact, like a price or a phone number, matches what 🧑 you told RaisQ. It must quote what it found.
-4. **Passed?** ⚙️ RaisQ decides, with plain code. If the work failed and there are tries left, RaisQ sends it back to the 🤖 builder AI to try again, with exactly what was wrong. If the builder AI needs you while it works, the task is parked straight away.
+4. **Passed?** ⚙️ RaisQ decides, with plain code. If the work failed and there are tries left (3 by default), the 🤖 builder AI tries again, told exactly what was wrong.
 
-Every run ends **ready** or **parked**, and either way it's 🧑 your turn. Approve it and it's done, or answer it or send it back with a note, and it goes back to the queue to be built again:
+Every task ends **ready** or **parked**, and either way it's 🧑 your turn:
 
-| | When | What 🧑 you do |
-|---|---|---|
-| **Ready** | It passed everything | Review it, then merge it or send it back |
-| **Parked** | The 🤖 builder AI asked a question, or needs access it doesn't have, like a test database | Answer it, or give it access |
-| **Parked** | No tries left: it reached the limit (3 by default), or failed the same way twice in a row | Read what failed, make the task clearer, and send it back |
-| **Parked** | A tool a test needs isn't installed | Install it. `raisq doctor` says what's missing. |
+- **Ready** means it passed everything. Read the result, then approve it, or send it back with a note.
+- **Parked** means it needs you: the builder AI asked a question or needs access it doesn't have, or it ran out of tries. Answer it, or make the task clearer and send it back. [Why a task gets parked](docs/guides/tasks.md#why-a-task-gets-parked).
 
-A question parks a task only when nobody is there to answer it. With `raisq run`, RaisQ asks you right away. With `raisq batch`, it sets the task aside and moves on to the next one, so you come back to a list. [More on parked tasks](docs/guides/tasks.md#why-a-task-gets-parked).
+Whatever you answer or send back goes into the task, and it's built again. Once you approve it, it's done, and the work is on its own git branch for you to merge.
 
-## Batches: queue tasks and walk away
+## Principles
 
-`raisq run` does one task while you watch. `raisq batch` does every queued task, one after another, while you're away:
+RaisQ is built on a few ideas. They're why you can trust what it hands you.
+
+- **Nothing grades its own work.** A separate AI session reviews the builder's result without being able to change it, and plain code, not an AI, makes the final pass or fail call.
+- **Show the evidence.** The reviewer must quote the exact words it's judging, and RaisQ checks those words are really there. A verdict without evidence isn't a verdict.
+- **You decide what's true.** Facts about your project come from you. Anything the AI guessed is marked as a guess, and anything nobody knows is kept out instead of made up.
+- **Safe by design, not by settings.** The builder works in a container with only a copy of your project. It can't see your SSH keys or logins, can't change the tests that judge it, and can't push, merge or deploy. None of that needs configuring. [How isolation works](docs/reference/how-it-works.md#isolation).
+- **Your time is for decisions.** RaisQ handles retries and routine checks, and brings you only what needs a person: what it wasn't sure about, and the choices the agent made on its own.
+- **It gets stricter over time.** When a mistake slips through, you can turn it into a new check, so it's caught on every task after.
+- **Use the tools you have.** RaisQ works with any AI agent and any test runner. Each one is a small plugin file, so nothing is locked to one vendor.
+
+## Get started
+
+You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI coding agent with a command-line tool, logged in. RaisQ works with any agent; [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are the ones tested so far, and [any other can be added](docs/reference/plugins.md#builder).
+
+Install RaisQ from [Releases](https://github.com/kkurno/raisq/releases), or with Go, then set up your project from its folder:
+
+```
+go install github.com/kkurno/raisq/cmd/raisq@latest
+raisq init
+```
+
+`raisq init` finds your tests and your agent, and asks a few questions about your project.
+
+### Your first task
+
+Every task takes the same three steps: describe it, let it work, review it.
+
+```
+raisq task "Add a contact page"          # describe it; RaisQ asks about anything unclear
+raisq run                                # the builder AI builds it, and RaisQ checks it
+raisq review add-a-contact-page          # read what was done and what it wasn't sure about
+raisq review add-a-contact-page --done   # approve it
+```
+
+The work is on its own git branch, `raisq/add-a-contact-page`. Merge it like any other branch. RaisQ never merges or deploys anything itself.
+
+### Or just ask your agent
+
+You can take the same steps from your AI agent's chat, in your own words:
+
+```
+/raisq add a contact page
+/raisq run it
+/raisq show me the result
+/raisq approve it
+```
+
+Your agent runs the commands for you, and asks you whatever RaisQ needs to know. It never approves or answers for you. `raisq init` has already set this up; with Claude Code, also run `raisq skill claude-code` once. [More on using RaisQ from chat](docs/guides/chat.md).
+
+The [getting started guide](docs/guides/getting-started.md) walks through all of this with a real example.
+
+## Run tasks while you're away
+
+`raisq run` builds one task while you watch. Queue several, and `raisq batch` builds them all, one after another, while you're away:
 
 ```
 raisq task "Add a contact page"
@@ -74,97 +123,21 @@ raisq task "Fix the menu on mobile"
 raisq batch
 ```
 
-A batch checks your setup before it starts, so it doesn't fail halfway through the night. It never waits for you: a task that needs you is parked, and the next one starts. It stops cleanly at its time limit (8 hours by default) or your AI account's usage limit, and `raisq batch` picks up where it left off. When you're back, a report lists what's ready to review and what needs you. [More on batches](docs/guides/batch.md).
+A batch never waits for you: a task that needs you is parked, and the next one starts. It stops cleanly at its time limit (8 hours by default) or your AI account's usage limit. When you're back, a report lists what's ready and what needs you. [More on batches](docs/guides/batch.md).
 
-## Or just ask your agent
-
-You don't have to learn the commands. In your AI agent's chat, type `/raisq` and say what you want:
-
-```
-/raisq add a contact page with our phone number
-/raisq what's ready?
-/raisq approve it
-```
-
-Your agent runs RaisQ for you and asks you whatever RaisQ needs to know. It never approves or answers on your behalf. [More on using RaisQ from chat](docs/guides/chat.md).
-
-## Principles
-
-RaisQ is built on a few ideas. They're why it works the way it does.
-
-- **Nothing grades its own work.** The builder never judges its own result. A separate AI session reviews it, seeing only the result and unable to change anything, and plain code, not an AI, makes the final pass or fail call. The reviewer can be any AI, even the builder's own model, but a different one shares fewer blind spots, so every result says when they're the same.
-- **Show the evidence.** The reviewer must quote the exact words it's judging, and RaisQ checks those words are really there. A verdict without evidence isn't a verdict.
-- **You decide what's true.** Facts about your project come from you. Anything the AI guessed is marked as a guess, and anything nobody knows is kept out instead of made up.
-- **Safe by design, not by settings.** The agent works in a sealed-off container, can't change the tests that judge it, and can't push, merge or deploy. None of that needs configuring. Running without the container takes one deliberate setting, and every result then says so.
-- **Your time is for decisions.** RaisQ handles retries and routine checks, and brings you only what needs a person: what it wasn't sure about, and the choices the agent made on its own.
-- **It gets stricter over time.** When a mistake slips through, you can turn it into a new check, so it's caught on every task after.
-- **Use the tools you have.** RaisQ works with any AI agent and any test runner. Each one is a small plugin file, so nothing is locked to one vendor.
-
-## Quick start
-
-You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI coding agent with a command-line tool, logged in. RaisQ works with any agent; [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are the ones tested so far, and [any other can be added](docs/reference/plugins.md#builder).
-
-**1. Install RaisQ.** Download it from [Releases](https://github.com/kkurno/raisq/releases), or with Go:
-
-```
-go install github.com/kkurno/raisq/cmd/raisq@latest
-```
-
-**2. Set up your project.** In your project's folder:
-
-```
-raisq init
-```
-
-RaisQ finds your tests and your agent, and asks a few questions about your project.
-
-**3. Give it a task.**
-
-```
-raisq task "Add a contact page"
-```
-
-RaisQ turns your sentence into a clear list of what "done" means, and asks you about anything unclear.
-
-**4. Let it work.**
-
-```
-raisq run
-```
-
-**5. Look at the result.**
-
-```
-raisq review add-a-contact-page
-```
-
-You'll see what the agent did, anything it wasn't sure about, and every check it passed. If you're happy:
-
-```
-raisq review add-a-contact-page --done
-```
-
-The work is on its own git branch, `raisq/add-a-contact-page`. Merge it like any other branch. RaisQ never merges or deploys anything itself.
-
-The [getting started guide](docs/guides/getting-started.md) walks through all of this with a real example.
-
-## What next
+## Learn more
 
 | I want to… | Read |
 |---|---|
 | Try it step by step, with an example | [Getting started](docs/guides/getting-started.md) |
-| Queue several tasks and walk away | [Batches](docs/guides/batch.md) |
-| Use RaisQ by chatting with my agent | [Using RaisQ from chat](docs/guides/chat.md) |
 | Write, run and review tasks | [Working with tasks](docs/guides/tasks.md) |
+| Use RaisQ by chatting with my agent | [Using RaisQ from chat](docs/guides/chat.md) |
+| Queue several tasks and walk away | [Batches](docs/guides/batch.md) |
 | Tell RaisQ the facts about my project | [Facts](docs/guides/facts.md) |
 | Fix something that isn't working | [Troubleshooting](docs/guides/troubleshooting.md) |
 | Use a different AI, tool or test runner | [Plugins](docs/reference/plugins.md) |
 | See every setting | [Configuration](docs/reference/configuration.md) |
 | Understand exactly how a result is judged | [How it works](docs/reference/how-it-works.md) |
-
-## Is it safe?
-
-The agent runs in a container with only a copy of your project. It can't see your SSH keys, cloud logins or other files, and it can't push to git. Your agent's login is copied in for one attempt, and nothing it writes there gets back to your computer. See [how isolation works](docs/reference/how-it-works.md#isolation).
 
 ## Contributing
 
