@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkurno/raisq/plugin/proc"
 	"github.com/kkurno/raisq/slot"
 )
 
@@ -55,31 +56,12 @@ func (a Agent) Build(ctx context.Context, s slot.Session, prompt string) error {
 		return err
 	}
 	if r.Exit != 0 {
-		if usageLimited(r.Output) {
+		if proc.UsageLimited(r.Output) {
 			return slot.ErrUsageLimit
 		}
 		return fmt.Errorf("%s exited %d", a.PluginName, r.Exit)
 	}
 	return nil
-}
-
-// usageLimited spots the vendor saying the account is out of quota. The
-// transcript is never read for anything else.
-func usageLimited(out string) bool {
-	l := strings.ToLower(domainTail(out))
-	for _, s := range []string{"usage limit", "rate limit", "quota", "429", "credit balance is too low"} {
-		if strings.Contains(l, s) {
-			return true
-		}
-	}
-	return false
-}
-
-func domainTail(s string) string {
-	if len(s) > 2000 {
-		return s[len(s)-2000:]
-	}
-	return s
 }
 
 // hostOut is where the session's out directory is on the host.

@@ -394,6 +394,9 @@ func (m Model) Ask(ctx context.Context, prompt string) (string, error) {
 	cmd.Stderr = &errb
 	out, err := cmd.Output()
 	if err != nil {
+		if proc.UsageLimited(errb.String() + string(out)) {
+			return "", fmt.Errorf("%s: %w", m.F.Name, slot.ErrUsageLimit)
+		}
 		return "", fmt.Errorf("%s: %v: %s", m.F.Name, err, domain.TailLines(errb.String(), 5))
 	}
 	return string(out), nil

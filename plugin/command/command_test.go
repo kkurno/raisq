@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,6 +84,19 @@ func TestModel(t *testing.T) {
 	out, err := m.Ask(context.Background(), `{"ok":true}`)
 	if err != nil || out != `{"ok":true}` {
 		t.Fatalf("%q %v", out, err)
+	}
+}
+
+// A critic out of quota stops the run, as the builder does, instead of
+// parking the task as blocked.
+func TestModelUsageLimitIsAStop(t *testing.T) {
+	m := Model{F: File{Name: "critic", Run: "echo 'Claude usage limit reached' >&2; exit 1"}}
+	if _, err := m.Ask(context.Background(), "x"); !errors.Is(err, slot.ErrUsageLimit) {
+		t.Fatalf("want a usage limit, got %v", err)
+	}
+	m = Model{F: File{Name: "critic", Run: "echo 'bad flag' >&2; exit 2"}}
+	if _, err := m.Ask(context.Background(), "x"); errors.Is(err, slot.ErrUsageLimit) {
+		t.Fatal("any other failure isn't a usage limit")
 	}
 }
 

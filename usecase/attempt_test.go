@@ -422,3 +422,38 @@ func TestEditingCheckConfigChangesNothing(t *testing.T) {
 		t.Fatal("a check's config is restored from before the task")
 	}
 }
+
+type failingModel struct{ err error }
+
+func (failingModel) Name() string { return "failing-model" }
+func (m failingModel) Ask(ctx context.Context, prompt string) (string, error) {
+	return "", m.err
+}
+
+// A stop after the build, such as the critic hitting its usage limit or
+// Ctrl-C during the checks, puts the task back in the queue, not parked.
+func TestStopAfterTheBuildRequeues(t *testing.T) {
+	dir, s := project(t)
+	b := &fake.Builder{Fn: func(n int, wd, prompt string) (domain.Result, []domain.Choice) {
+		write(t, wd, "app.txt", "ok\n")
+		return domain.Result{Status: domain.ResultDone}, nil
+	}}
+	d := deps(t, dir, s, b, nil)
+	d.Model = failingModel{fmt.Errorf("critic: %w", slot.ErrUsageLimit)}
+	_, err := Run(context.Background(), d, "t1")
+	if err != ErrStopped {
+		t.Fatalf("a usage limit at the critic is a stop, got %v", err)
+	}
+	if st, _ := s.LoadState("t1"); st.State != domain.Queued {
+		t.Fatalf("a stopped task goes back to the queue, got %s %s", st.State, st.Note)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	d.Model = &fake.Model{Fn: func(string) string { cancel(); return "{}" }}
+	if _, err := Run(ctx, d, "t1"); err != ErrStopped {
+		t.Fatalf("Ctrl-C during the critic is a stop, got %v", err)
+	}
+	if st, _ := s.LoadState("t1"); st.State != domain.Queued {
+		t.Fatalf("an interrupted task goes back to the queue, got %s", st.State)
+	}
+}

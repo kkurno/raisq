@@ -181,6 +181,10 @@ func Run(ctx context.Context, d Deps, task string) (RunRecord, error) {
 		ar, err := attempt(ctx, d, task, run, n, spec, facts, rubrics, base, st.Base, rec.Branch, prev, settled)
 		rec.Attempts = n
 		_ = d.Store.SaveRunFile(task, run, fmt.Sprintf("attempt-%d/attempt.json", n), ar)
+		// Interrupted or out of quota at any step, not only the build.
+		if err != nil && !errors.Is(err, ErrBreach) && (ctx.Err() != nil || errors.Is(err, slot.ErrUsageLimit)) {
+			err = errStop{err}
+		}
 		var stop errStop
 		if errors.As(err, &stop) {
 			// Out of quota or interrupted: back to the queue, not a failure.
