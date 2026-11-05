@@ -86,7 +86,13 @@ raisq init
 
 The installer puts `raisq` in a folder that's already on your `PATH`, so it works straight away. Run it again to update. To install with Go instead, see [installing](docs/guides/getting-started.md#1-install-raisq).
 
-`raisq init` finds your tests and your agent, and asks a few questions about your project. Commit the `.raisq/` folder it creates: it's how your project's work is judged, shared with your team. Your own settings and tasks stay in `.raisq/local/`, which git ignores, and a teammate who clones the project runs `raisq init` once for their machine.
+`raisq init` finds your agent and container tool. Then teach RaisQ how your project is checked, from your agent's chat (with Claude Code, run `raisq skill claude-code` first):
+
+```
+/raisq set up this project
+```
+
+Your agent reads your CI, scripts and docs, and proposes checks, rubrics and facts. RaisQ tries each check on your project before it's added, and nothing is added until you agree. Commit the `.raisq/` folder: it's how your project's work is judged, shared with your team. Your own settings and tasks stay in `.raisq/local/`, which git ignores.
 
 ### Your first task
 
@@ -112,7 +118,7 @@ You can take the same steps from your AI agent's chat. Type `/raisq`, then say w
 /raisq approve the contact page        → raisq review add-a-contact-page --done
 ```
 
-Your agent runs the command and tells you what happened. When a request could mean two things, it asks rather than guesses, and it checks with you before approving anything. It never answers RaisQ's questions for you. `raisq init` has already set this up; with Claude Code, also run `raisq skill claude-code` once. [More on using RaisQ from chat](docs/guides/chat.md).
+Your agent runs the command and tells you what happened. When a request could mean two things, it asks rather than guesses, and it checks with you before approving anything. It never answers RaisQ's questions for you. [More on using RaisQ from chat](docs/guides/chat.md).
 
 The [getting started guide](docs/guides/getting-started.md) walks through all of this with a real example.
 

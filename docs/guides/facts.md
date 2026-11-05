@@ -12,7 +12,7 @@ If it's a library or a backend with nothing a user reads, you can skip them. Rai
 
 ## Adding facts
 
-`raisq init` asks for a few. To add more:
+When you set up a project from chat, your agent asks you for the facts it finds the project shows people. To add more:
 
 ```
 raisq fact add business/phone "02-123-4567" --kind contact

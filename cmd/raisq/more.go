@@ -225,6 +225,11 @@ func cmdDoctor(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// No checks means nothing but the critic judges the work: worth saying,
+	// but a project can still run that way.
+	if !proj.HasChecks() {
+		logf("! no checks yet, so only the critic judges the work: in your agent's chat, /raisq set up this project")
+	}
 	// An old chat skill is worth knowing about, but nothing fails over it.
 	if stale := skill.Stale(proj.Dir, proj.SkillFolders()); len(stale) > 0 {
 		logf("! the agent skill in %s isn't this RaisQ version's: run raisq skill", strings.Join(stale, ", "))

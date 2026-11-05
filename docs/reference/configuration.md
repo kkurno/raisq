@@ -1,6 +1,6 @@
 # Configuration
 
-`raisq init` writes everything below. It's a starting point: you can change any of it afterwards, with the commands in [Changing the setup](#changing-the-setup) or by editing the files.
+`raisq init` writes the folders and this machine's settings. The checks, rubrics and facts come from setting up the project in your agent's chat (`/raisq set up this project`), or from the commands in [Changing the setup](#changing-the-setup). You can change any of it afterwards, with those commands or by editing the files.
 
 ```
 .raisq/

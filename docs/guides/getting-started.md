@@ -45,26 +45,41 @@ cd my-website
 raisq init
 ```
 
-RaisQ looks at your project and tells you what it found:
+RaisQ finds the agent and container tool on your computer:
 
 ```
-  Found: web app · npm · claude-code · Docker
-  Preset: web   Builder: claude-code   Critic: claude-code-critic   Isolation: docker
-  Plugin files: build, claude-code, claude-code-critic, contacts, links, page-text, site
+  Found: claude-code · Docker
+  Builder: claude-code   Critic: claude-code-critic   Isolation: docker
   note: one agent CLI: the critic is from the same vendor as the builder, and every review pack says so
-  ? Write these into .raisq/? You can change any of it afterwards [y/N]
+  ? Set up RaisQ here with these? You can change any of it afterwards [y/N]
     > y
 ```
 
 - **Builder** is the agent that writes code.
 - **Critic** is the second AI that checks it.
-- **Plugin files** are the tools RaisQ found: your build command, how to start your site, and some checks for websites.
 
-Type `y`. If something isn't what you want, such as the builder, accept it anyway and [change it afterwards](#changing-what-init-chose): typing `n` writes nothing at all. RaisQ then asks a few questions about your project, such as its name and phone number. These become **facts**, which is how RaisQ catches an agent making things up. Press Enter to skip one you don't know.
+Type `y`. RaisQ creates a `.raisq/` folder and adds its skill to `.agents/skills/raisq/`, so you can use it from your agent's chat. If you use Claude Code, also run `raisq skill claude-code`, because Claude Code reads skills from its own folder.
 
-RaisQ creates a `.raisq/` folder in your project. Commit it: the facts, checks and rubrics in it are how your project's work is judged, for everyone on the team. `.raisq/local/` inside it is yours alone, with your settings and tasks, and git ignores it. A teammate who clones the project runs `raisq init` once to set up their own machine.
+## 3. Teach RaisQ how to check your project
 
-Run `raisq doctor` to make sure everything is ready:
+`init` doesn't know yet how your project is tested. Working that out means reading your CI, your scripts and your docs, which your AI agent is good at. Open your agent's chat in the project and type:
+
+```
+/raisq set up this project
+```
+
+Your agent reads how the project already checks itself, then proposes:
+
+- **checks:** the commands that test your work, such as your tests, linter and build, each taken from your CI or scripts
+- **what they need,** such as a database to run against
+- **rubrics:** yes-or-no questions the critic asks on every task, for what a command can't check
+- **facts:** your business name, phone number and other details it asks you for, so RaisQ catches an agent making them up
+
+Before anything is added, RaisQ tries each check once on your project as it is, and your agent shows you the result. A check that already fails before any task can't catch anything yet, so your agent fixes it first. Nothing is added until you agree.
+
+Commit `.raisq/`: the checks, facts and rubrics in it are how your project's work is judged, for everyone on the team. `.raisq/local/` inside it is yours alone, with your settings and tasks, and git ignores it. A teammate who clones the project runs `raisq init` once to set up their own machine.
+
+Then run `raisq doctor` to make sure everything is ready:
 
 ```
   ✓ everything RaisQ needs is here
@@ -72,9 +87,9 @@ Run `raisq doctor` to make sure everything is ready:
 
 If it reports a problem, see [Troubleshooting](troubleshooting.md).
 
-### Changing what init chose
+**Without an agent chat,** you can add checks yourself: `raisq plugin new checks unit-tests` gives you a file to fill in, and `raisq plugin add <file>` tries it and adds it. See [Plugins](../reference/plugins.md).
 
-Everything `init` wrote can be changed later:
+### Changing the setup later
 
 ```
 raisq config                     # see every setting
@@ -82,9 +97,9 @@ raisq config builder cursor      # build with Cursor instead
 raisq plugin remove links        # stop running the links check
 ```
 
-[Configuration: changing the setup](../reference/configuration.md#changing-the-setup) lists everything you can change.
+Or ask your agent: `/raisq update the checks` after your project changes. [Configuration: changing the setup](../reference/configuration.md#changing-the-setup) lists everything you can change.
 
-## 3. Describe a task
+## 4. Describe a task
 
 ```
 raisq task "Add a cake order page"
@@ -104,7 +119,7 @@ RaisQ turns your sentence into a list of things that must be true when the task 
 
 Write tasks the way you'd explain them to a colleague. Smaller tasks work better than big ones.
 
-## 4. Run it
+## 5. Run it
 
 ```
 raisq run
@@ -128,7 +143,7 @@ Here's what happened:
 
 Each attempt takes a few minutes. If the agent has a question while it works, RaisQ asks you right there in the terminal.
 
-## 5. Review the result
+## 6. Review the result
 
 ```
 raisq review add-a-cake-order-page
@@ -161,7 +176,7 @@ To see the actual code, look at the branch:
 git diff main raisq/add-a-cake-order-page
 ```
 
-## 6. Finish
+## 7. Finish
 
 If you're happy:
 

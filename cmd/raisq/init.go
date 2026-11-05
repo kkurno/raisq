@@ -8,11 +8,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/kkurno/raisq/domain"
 	"github.com/kkurno/raisq/plugin/detect"
 	"github.com/kkurno/raisq/plugin/registry"
 	"github.com/kkurno/raisq/plugin/skill"
@@ -51,21 +49,14 @@ func cmdInit(ctx context.Context, args []string) error {
 		}
 	}
 
-	p := detect.Detect(dir)
-	fmt.Printf("  Found: %s\n", strings.Join(p.Found, " · "))
-	fmt.Printf("  Preset: %s   Builder: %s   Critic: %s   Isolation: %s\n",
-		strings.Join(p.Presets, ", "), p.Builder, p.Critic, p.Isolation)
-	var names []string
-	for n := range p.Files {
-		names = append(names, strings.TrimSuffix(n, ".yaml"))
-	}
-	sort.Strings(names)
-	fmt.Printf("  Plugin files: %s\n", strings.Join(names, ", "))
-	for _, n := range p.Notes {
+	m := detect.DetectMachine()
+	fmt.Printf("  Found: %s\n", strings.Join(m.Found, " · "))
+	fmt.Printf("  Builder: %s   Critic: %s   Isolation: %s\n", m.Builder, m.Critic, m.Isolation)
+	for _, n := range m.Notes {
 		fmt.Printf("  note: %s\n", n)
 	}
 	if !*yes {
-		ok, err := newTTY().Confirm("Write these into .raisq/? You can change any of it afterwards")
+		ok, err := newTTY().Confirm("Set up RaisQ here with these? You can change any of it afterwards")
 		if err != nil {
 			return err
 		}
@@ -73,36 +64,27 @@ func cmdInit(ctx context.Context, args []string) error {
 			return fmt.Errorf("nothing written")
 		}
 	}
-
-	for n, body := range p.Files {
+	for n, body := range m.Files {
 		if err := write(filepath.Join(raisq, "plugins", n), body); err != nil {
 			return err
 		}
 	}
-	for n, body := range p.Rubrics {
-		if err := write(filepath.Join(raisq, "rubrics", n+".yaml"), body); err != nil {
+	for _, d := range []string{"facts", "rubrics"} {
+		if err := os.MkdirAll(filepath.Join(raisq, d), 0o755); err != nil {
 			return err
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(raisq, "facts"), 0o755); err != nil {
+	if err := writeMachine(raisq, m.Builder, m.Critic, m.Isolation); err != nil {
 		return err
-	}
-	if err := writeMachine(raisq, p.Builder, p.Critic, p.Isolation); err != nil {
-		return err
-	}
-	if contains(p.Presets, "web") || contains(p.Presets, "docs") {
-		if err := seedFacts(dir, *yes); err != nil {
-			return err
-		}
 	}
 	if _, err := skill.Write(dir, []string{skill.Standard}); err != nil {
 		return err
 	}
-	fmt.Println("  Ready. Commit .raisq/ and .agents/: they're the project's setup, shared with your team.")
-	fmt.Println("  .raisq/local/ is this machine's: your settings, tasks and runs. Git ignores it.")
-	fmt.Println("  To change what was chosen: raisq config, and raisq plugin add or remove.")
-	fmt.Println("  Next: raisq task \"what you want built\"")
-	fmt.Printf("  Or from your agent's chat: /raisq what you want. For an agent that doesn't read %s, run raisq skill <agent>, such as raisq skill claude-code.\n", skill.Standard)
+	fmt.Println("  Ready. RaisQ knows your agent and container tool, but not yet how to check this project.")
+	fmt.Println("  Next, in your agent's chat: /raisq set up this project")
+	fmt.Println("  It reads your CI, scripts and docs, and proposes checks, rubrics and facts for you to approve.")
+	fmt.Printf("  For an agent that doesn't read %s, first run raisq skill <agent>, such as raisq skill claude-code.\n", skill.Standard)
+	fmt.Println("  Commit .raisq/ and .agents/: they're the project's setup. .raisq/local/ is yours, and git ignores it.")
 	return nil
 }
 
@@ -167,55 +149,9 @@ func writeMachine(raisq, builder, critic, isolation string) error {
 	return write(registry.ConfigPath(raisq), "# This machine's RaisQ settings. Not committed: each person has their own.\n"+string(data))
 }
 
-// seedFacts asks the questions a site's facts need, once.
-func seedFacts(dir string, skip bool) error {
-	if skip {
-		return nil
-	}
-	proj, err := registry.Open(dir)
-	if err != nil {
-		return err
-	}
-	t := newTTY()
-	fmt.Println("  A few facts about the project. Leave one empty if it's unknown; it stays out of the output.")
-	today := time.Now().Format("2006-01-02")
-	who := proj.Person()
-	if who == "" {
-		who = "you"
-	}
-	for _, q := range []struct{ id, kind, ask string }{
-		{"business/name", "terms", "Business or product name?"},
-		{"business/phone", "contact", "Phone number shown to users?"},
-		{"business/email", "contact", "Email shown to users?"},
-		{"business/address", "contact", "Address shown to users?"},
-	} {
-		a, err := t.Ask(q.ask)
-		if err != nil {
-			return err
-		}
-		f := domain.Fact{ID: q.id, Kind: q.kind, Tag: domain.Gap}
-		if a != "" {
-			f = domain.Fact{ID: q.id, Text: a, Kind: q.kind, Tag: domain.Confirmed, SaidBy: who, SaidOn: today}
-		}
-		if err := proj.Store.SaveFact(f, "business"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func write(p, body string) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(p, []byte(body), 0o644)
-}
-
-func contains(xs []string, s string) bool {
-	for _, x := range xs {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }

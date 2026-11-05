@@ -32,7 +32,7 @@ func init() {
 
 const usage = `raisq: AI-built work isn't trusted until it can prove what it says.
 
-  raisq init                          set up the project, once
+  raisq init                          set up RaisQ here; then /raisq set up this project, in your agent's chat
   raisq task "Add a cake order form"  describe a piece of work; raisq asks about what's unclear
   raisq run [task]                    build and check the next queued task, or the one you name
   raisq batch                         build and check every queued task, while you're away

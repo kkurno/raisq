@@ -10,6 +10,7 @@ Each request does one thing, the same as one `raisq` command:
 
 | You want to | Say something like | Your agent runs |
 |---|---|---|
+| Set up how the project is checked | `/raisq set up this project` | several: see [Setting up a project](#setting-up-a-project) |
 | Add a task | `/raisq add a contact page with our phone number` | `raisq task` |
 | Build one task | `/raisq run the contact page` | `raisq run` |
 | Build every queued task while you're away | `/raisq start a batch for 2 hours` | `raisq batch` |
@@ -46,6 +47,33 @@ You:    approve
 Agent:  Approved. The work is on branch raisq/add-a-contact-page for you to merge.
         Ran: raisq review add-a-contact-page --done
 ```
+
+## Setting up a project
+
+`raisq init` only sets up your machine. How your project is checked is worked out by your agent, because it can read your project:
+
+```
+You:    /raisq set up this project
+Agent:  From your CI, here's what I'd add:
+        - api-test: pnpm exec jest in apps/api, from ci.yml. Needs Postgres.
+        - postgres: a test database for the checks.
+        - web-lint: pnpm run lint in apps/web, from ci.yml.
+        - links: RaisQ's own link check, for the website.
+        Add them?
+You:    yes
+Agent:  RaisQ tried each check on the project as it is:
+        ✓ api-test passes, so it will catch a task that breaks it.
+        ! web-lint already fails before any task: 3 lint errors in
+          src/legacy. It can't catch anything until those are fixed.
+        ✓ links passes.
+        Add api-test, postgres and links now, and leave web-lint out?
+```
+
+- **Every check comes from something your project already runs,** such as a CI step or a script, and your agent tells you which.
+- **RaisQ tries each check before it's added,** and your agent shows you the result. A check that already fails, or is blocked, is worth knowing about before it judges any task.
+- **Nothing is added until you agree.** Then commit `.raisq/`, so your team's tasks are checked the same way.
+
+When your project changes, `/raisq update the checks` proposes only what's new or different.
 
 ## How your agent avoids doing the wrong thing
 

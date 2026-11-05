@@ -140,7 +140,7 @@ It's mounted read-only while the agent builds, so the agent can't change it. Wit
 
 ## builder
 
-The builder can be any AI coding agent that has a command-line tool and can run without asking for permission. RaisQ ships plugin files for the ones tested so far, and `raisq init` sets them up when it finds them:
+The builder can be any AI coding agent that has a command-line tool and can run without asking for permission. RaisQ ships plugin files for the ones tested so far, and `raisq init` uses them when it finds the agent installed:
 
 | Agent | Plugin | Login brought in |
 |---|---|---|
@@ -297,6 +297,8 @@ raisq plugin remove my-check          # stop using one
 ```
 
 `raisq plugin add` tries each check once on the project as it is, in a fresh container, and says what it means: it **passes**, so it will catch a task that breaks it; it **already fails**, so it can't catch anything until that's fixed; or it's **blocked**, because a tool or something it needs is missing. From an agent's chat, it adds nothing until it's run again with `--yes`, which the skill does only after you agree.
+
+The easiest way to write plugins is to ask your agent: `/raisq set up this project` reads your CI and scripts and drafts them for you.
 
 A plugin for one task only goes in `.raisq/local/tasks/<task>/plugins/`.
 
