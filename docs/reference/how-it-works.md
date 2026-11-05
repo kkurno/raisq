@@ -11,9 +11,11 @@ The first is what any CI does, made safe for an agent working unattended. The se
 
 ```
 queued ──► running ──► ready ──► done
-             │           │
-             ▼           └──► queued (sent back, or a fact it relied on changed)
-           parked ──► queued (answered)
+  ▲          │  │        │
+  │          │  │        └──► queued (sent back, or a fact it relied on changed)
+  │          │  └──► queued (stopped by Ctrl-C or a usage limit)
+  │          ▼
+  └────── parked (answered, or sent back)
 ```
 
 A task is always in exactly one state. `raisq status` shows them all.
@@ -21,14 +23,14 @@ A task is always in exactly one state. `raisq status` shows them all.
 - **queued:** waiting its turn. `raisq run` takes the oldest.
 - **running:** in a run now.
 - **ready:** passed, waiting for you to review.
-- **parked:** stopped, waiting for a person. The reason is one of *out of attempts*, *question* (the agent asked one), *needs something* (the container keeps it out), *stuck* (two attempts failed the same way) or *blocked* (a tool is missing).
-- **done:** you marked it done. Its branch is yours to merge.
+- **parked:** stopped, waiting for a person. The reason is one of *out of attempts*, *question* (the agent asked one, or `raisq task` had questions with nobody at a terminal), *needs something* (the container keeps it out), *stuck* (two attempts failed the same way) or *blocked* (something stopped the attempt before it could be judged, such as a missing tool; the note says what).
+- **done:** you marked it done. Its branch is yours to merge. A part of a split task becomes done by itself when it passes; you review the whole task instead.
 
 ## A run
 
 A run is one task, judged against one fixed version of the spec. When it starts, RaisQ records which version of your facts and the task's spec it's judged against, such as `facts@77c962ccf551`. Every attempt and the critic use that version, so a fact you edit mid-run doesn't change what's being judged. If you change a fact the result relied on, the task goes back to the queue rather than to review.
 
-A task gets a limited number of attempts: `attempts` in `raisq.yaml`, three by default. Each one is a fresh agent session in a new container, continuing from the branch the last attempt committed, so it fixes forward instead of starting over.
+A task gets a limited number of attempts: three by default, set with `raisq config attempts <n>`. Each one is a fresh agent session in a new container, continuing from the branch the last attempt committed, so it fixes forward instead of starting over.
 
 ## An attempt
 
@@ -47,7 +49,7 @@ The agent works in a container on a clone of your project, then writes `result.j
 
 ### 2. Audit
 
-RaisQ checks the clone's own git hooks and config are unchanged, and that read-only mounts weren't written. A breach fails the attempt and stops a batch, because it means the setup isn't safe. Then RaisQ commits the change itself.
+RaisQ checks the clone's own git hooks and config are unchanged, and that every reference given to the builder was mounted read-only, so it couldn't be written. A breach fails the attempt and stops a batch, because it means the setup isn't safe. Then RaisQ commits the change itself.
 
 ### 3. Check
 
@@ -75,7 +77,8 @@ Fixed rules, in code, turn the critic's answers into verdicts. No AI decides thi
 
 | The critic's answer | Verdict |
 |---|---|
-| A quote that isn't really in the output or the fact | asked again once, then unsure |
+| A quote that isn't really in the output | asked again once, then unsure |
+| A quote that isn't really in the fact it cites, or a fact that doesn't exist | unsure |
 | A claim with no fact behind it | fail: it was invented |
 | A claim about a known gap | fail: it should have been left out |
 | A claim that contradicts its fact | fail, saying what differs |
@@ -83,6 +86,7 @@ Fixed rules, in code, turn the critic's answers into verdicts. No AI decides thi
 | A claim the critic never answered for | unsure |
 | A criterion not shown in the output | fail |
 | A rubric answered n/a | not judged, and listed |
+| A rubric the critic didn't answer, or answered "maybe" | unsure |
 | Anything else | pass |
 
 Any fail, or any failed check, fails the attempt. Its failures go to the next session as a handoff: each one with only the lines that show it, and the files changed so far. If two attempts in a row fail the same way, the task is parked instead of spending another attempt on the same wall.
@@ -110,8 +114,9 @@ One per task, in the order you need it:
 
 `raisq batch` is unattended and never waits. A question parks the task and the next one starts. A batch:
 
-- checks every tool before the first task, so it doesn't fail at task seven
-- stops at its time limit (8 hours by default) or at your agent's usage limit, and the task it was on goes back to the queue
+- runs `raisq doctor` before the first task, so a missing container tool, login or critic doesn't fail it at task seven. Tools that checks use are only found inside the container, and a missing one parks that task as blocked.
+- stops starting new tasks at its time limit (8 hours by default), and lets the running one finish
+- stops right away at a usage limit or Ctrl-C, at any step, and the task it was on goes back to the queue
 - stops entirely on an audit breach
 - ends with a report of what's ready and what's parked
 
@@ -131,7 +136,7 @@ The agent works with its permission prompts off, because nobody is there to appr
 - **Test secrets reach only the checks,** after the agent has exited, through a provider (see [plugins](plugins.md#provides)).
 - **`.raisq/` and RaisQ's agent skill never enter the container.** The agent can't read your rubrics or change what judges it, and it can't change the skill that tells your chat agent how to use RaisQ. They're also left out of every commit and diff the task makes.
 
-`isolation: none` runs everything on the host. It's for a machine that's disposable anyway, such as a CI runner, and every review pack says so.
+`isolation: none` runs everything on the host. It's for a machine that's disposable anyway, such as a CI runner. `raisq config isolation none` warns and asks before setting it, and every review pack says so.
 
 ## Big tasks
 
@@ -146,7 +151,7 @@ When a mistake gets past review, `raisq learn <task> "what was wrong"` turns it 
 
 Either way, it runs on every later task. A lesson says how to check, never what's true: facts belong in `facts/`.
 
-Lessons can be wrong. `raisq review <task> --overrule <lesson>` records that a lesson failed something it shouldn't have, and after three overrules `raisq learn` proposes retiring it. With no arguments, `raisq learn` also picks 20% of done tasks for you to re-read, because that's how the mistakes that got through are found.
+Lessons can be wrong. For a rubric lesson, `raisq review <task> --overrule <lesson>` records that it failed something it shouldn't have, and after three overrules `raisq learn` proposes retiring it. A check lesson is a plugin file: `raisq plugin remove <name>` stops it. With no arguments, `raisq learn` also picks a share of done tasks for you to re-read (20% by default, `spot_check` in [configuration](configuration.md)), because that's how the mistakes that got through are found.
 
 ## Specs from elsewhere
 

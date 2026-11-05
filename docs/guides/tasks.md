@@ -88,17 +88,17 @@ Then decide:
 |---|---|
 | `raisq review add-contact --done` | It's right. Merge the branch `raisq/add-contact`. |
 | `raisq review add-contact --send-back "Use the phone number from the footer"` | It's not right. Your note is added to the task, and it's queued again. |
-| `raisq review fix-footer --answer "Yes, the same everywhere"` | It's parked with a question. Your answer is added to the task, and it's queued again. |
+| `raisq review fix-footer --answer "Yes, the same everywhere"` | It's parked with a question. Your answer goes into the task's criteria, or into the facts when it's something true about the project, and it's queued again. Only for a question: any other parked task is sent back. |
 
 ## Why a task gets parked
 
 | Reason | Means | Fix |
 |---|---|---|
-| question | The agent needed a decision only you can make | `--answer` it |
-| out of attempts | It used all its tries (`attempts` in `raisq.yaml`, three by default) and still didn't pass | Read the review pack to see what kept failing. Make the task clearer, then `--send-back`. |
-| stuck | Two tries failed in exactly the same way | Usually the task needs something it doesn't have. Read the failures. |
-| needs something | The agent needed access it doesn't have, such as a database or an API key | See [Plugins: provides](../reference/plugins.md#provides) |
-| blocked | A tool a check needs isn't installed, or the audit found a problem | `raisq doctor` says what |
+| question | The agent needed a decision only you can make, or `raisq task` had questions and nobody was at a terminal to answer them | `--answer` it |
+| out of attempts | It used all its tries (three by default; `raisq config attempts <n>` changes it) and still didn't pass | Read the review pack to see what kept failing. Make the task clearer, then `--send-back`. |
+| stuck | Two tries failed in exactly the same way | Usually the task needs something it doesn't have. Read the failures, then `--send-back`. |
+| needs something | The agent needed access it doesn't have, such as a database or an API key | Provide it (see [Plugins: provides](../reference/plugins.md#provides)), then `--send-back` |
+| blocked | Something stopped the attempt before it could be judged: a check's tool missing in the container, a dependency that wouldn't install, a provider that never started, or the audit finding something the builder shouldn't have touched | The note says what. Fix it, then `--send-back`. |
 
 ## No agent? Do it yourself
 
@@ -109,6 +109,8 @@ git switch -c raisq/add-contact     # make the change and commit it
 git switch main
 raisq run --check add-contact
 ```
+
+The checks still run in the container, so this needs Docker or Podman like any run. If it fails, the task is parked with the review pack: fix it on the branch, then `raisq review add-contact --send-back "what you fixed"` and `raisq run --check add-contact` again.
 
 ## Learning from mistakes
 

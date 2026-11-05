@@ -29,7 +29,7 @@ RaisQ has three rings, and every dependency points inwards:
 
 ```
 domain/      ring 1: the rules. Facts, tasks, checks, verdicts. Imports nothing from RaisQ.
-usecase/     ring 2: the flows (init, task, attempt, batch, review, learn).
+usecase/     ring 2: the flows (task, attempt, queue, review, learn, convert).
 slot/        ring 2: the interfaces the flows need from outside, and fakes in slot/fake.
 plugin/      ring 3: what fills each slot: git, docker, the agent, plugin files, built-ins.
 cmd/raisq/   ring 3: the CLI. It calls the use cases and holds no logic of its own.

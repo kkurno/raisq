@@ -50,9 +50,17 @@ Every fact says how you know it:
 raisq fact add orders/minimum "Minimum order 500 baht" --needs-stakeholder
 ```
 
-It stays *inferred* until you run `raisq fact confirm orders/minimum`.
+It stays *inferred* until it's confirmed. When the client has confirmed it, record who did:
 
-A **gap** is useful. If you don't know your minimum order yet, add it as a gap, and the agent won't invent one.
+```
+raisq fact confirm orders/minimum --by "Mai (owner)"
+```
+
+A **gap** is useful. If you don't know your minimum order yet, add it as a gap, and the agent won't invent one:
+
+```
+raisq fact add orders/minimum --gap
+```
 
 ## Changing a fact
 
@@ -72,6 +80,7 @@ raisq fact list business         # one group
 raisq fact list --tag inferred   # the ones nobody has confirmed
 raisq fact list --due            # the ones past their recheck date
 raisq fact list --kind rule      # your house rules
+raisq fact list --said-by mai    # the ones a person told you
 ```
 
-Facts are stored as plain YAML in `.raisq/facts/`, one file per group. You can edit them by hand, but `raisq fact` keeps track of which tasks relied on what. See [Configuration](../reference/configuration.md#facts) for the file format.
+Facts are stored as plain YAML in `.raisq/facts/`, one file per group. `--topic` on `raisq fact add` puts a fact in another file; a fact you change stays in the file it's in. You can edit them by hand, but `raisq fact` keeps track of which tasks relied on what. See [Configuration](../reference/configuration.md#facts) for the file format.

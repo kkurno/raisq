@@ -21,15 +21,12 @@ Both build, test and review each task the same way. The only difference is what 
 
 ## What a batch does
 
-1. **Checks everything first.** ⚙️ RaisQ runs `raisq doctor` before the first task. If Docker, a login or a tool is missing, the batch stops right there, not hours later at task seven.
+1. **Checks the setup first.** ⚙️ RaisQ runs `raisq doctor` before the first task. If Docker, your agent's login or the critic's tool is missing, the batch stops right there, not hours later at task seven. Tools that checks use are only found inside the container, so a missing one parks that task as *blocked*, and the batch moves on.
 2. **Runs each queued task in turn**, oldest first. Each one gets its full set of tries, just like `raisq run`.
 3. **Never waits for you.** If a task needs you, it's parked and the next task starts. One stuck task doesn't hold up the rest.
-4. **Stops cleanly.** It stops starting new tasks when:
-   - its time limit is up (8 hours by default)
-   - your AI account hits its usage limit
-   - you press Ctrl-C
-
-   The task it was working on goes back to the queue, so nothing is lost.
+4. **Stops cleanly.**
+   - **When its time limit is up** (8 hours by default), it stops starting new tasks, and lets the one that's running finish.
+   - **When your AI account hits its usage limit, or you press Ctrl-C,** it stops right away, and the task it was working on goes back to the queue, so nothing is lost.
 5. **Ends with a report** of what's ready and what's parked. It's printed, saved in `.raisq/batch-report.md`, and sent to any [report plugin](../reference/plugins.md#report) you've set up.
 
 There's one more reason a batch stops: if ⚙️ RaisQ finds the builder AI touched something it shouldn't have, such as a git hook, it stops the whole batch, because that means the setup isn't safe.
@@ -68,10 +65,10 @@ For one batch:
 raisq batch --for 2h
 ```
 
-For every batch, in `.raisq/raisq.yaml`:
+For every batch:
 
-```yaml
-batch: 6h
+```
+raisq config batch 6h
 ```
 
 The limit is when the batch stops *starting* tasks. A task that's already running is allowed to finish.
@@ -80,7 +77,7 @@ The limit is when the batch stops *starting* tasks. A task that's already runnin
 
 A batch is one command, so anything that can run a command on a schedule can run it: `cron`, a CI job, or a machine you leave on overnight.
 
-On a machine that only exists to run batches, such as a CI runner, you can set `isolation: none` in `raisq.yaml` to skip Docker. Only do this on a machine you're happy to throw away, because the builder AI then runs directly on it. Every review pack says when this was the case.
+On a machine that only exists to run batches, such as a CI runner, `raisq config isolation none --yes` skips Docker. Only do this on a machine you're happy to throw away, because the builder AI then runs directly on it. Every review pack says when this was the case.
 
 ## Tips
 

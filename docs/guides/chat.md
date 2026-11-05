@@ -18,6 +18,9 @@ Each request does one thing, the same as one `raisq` command:
 | Approve it | `/raisq approve the contact page` | `raisq review --done` |
 | Send it back | `/raisq send back the contact page: the phone number is wrong` | `raisq review --send-back` |
 | Tell RaisQ a fact | `/raisq our phone number is 02 123 4567` | `raisq fact add` |
+| See the settings | `/raisq which builder are we using?` | `raisq config` |
+| Change a setting | `/raisq build with Cursor` | `raisq config builder cursor` |
+| Stop running a check | `/raisq stop running the links check` | `raisq plugin remove links` |
 | Find out why something won't start | `/raisq why won't it run?` | `raisq doctor` |
 
 Type `/raisq` on its own to see what's going on and some examples.
@@ -50,9 +53,10 @@ Your agent works out what you meant, so it's built to check rather than guess:
 
 - **It asks when a request could mean two things.** "The contact page is wrong" could mean send it back, or add a new task to fix it, so your agent asks which.
 - **It always names the task.** If "it" or "the contact page" could be more than one task, it asks which one. When it runs a task, it names that task, so it never just picks the next one in the queue.
-- **It checks with you before recording a decision.** Before it approves, sends back or records a fact, it says exactly what it's about to record and waits for you. In the example above, "approve" was your reply to a question that already named the task, so that counted.
+- **It checks with you before recording a decision.** Before it approves, sends back, records a fact, changes a setting or removes a check, it says exactly what it's about to do and waits for you. In the example above, "approve" was your reply to a question that already named the task, so that counted.
 - **It shows what it ran.** Each reply ends with the command, so you can see it did what you asked.
-- **It never decides for you.** It doesn't approve, answer RaisQ's questions or add facts on its own, even when the answer seems obvious. It also doesn't build the task itself: the builder AI still does that in its container.
+- **It never decides for you.** It doesn't approve, answer RaisQ's questions or add facts on its own, even when the answer seems obvious. When a change comes with a warning, such as running without the container, it shows you the warning and lets you decide. It also doesn't build the task itself: the builder AI still does that in its container.
+- **It uses commands, and edits files only when you ask.** Commands check a change before saving it. You can still ask it to edit a file in `.raisq/` directly, such as a check's command, and it says which file first.
 
 Even if your agent gets something wrong, RaisQ's safety doesn't depend on it. The builder still can't change the tests that judge it, RaisQ still never merges or deploys, and approving refuses a result that's out of date. The skill never reaches the builder either: RaisQ keeps it out of the builder's copy of your project, along with `.raisq/`.
 

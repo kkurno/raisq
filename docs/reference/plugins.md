@@ -10,9 +10,9 @@ Most plugins are a YAML file in `.raisq/plugins/` describing a tool you already 
 
 | Slot | Job | Picked by |
 |---|---|---|
-| `builder` | Make the change: an agent CLI | `builder:` in `raisq.yaml` |
-| `model` | The critic, and every AI job with no tools | `critic:` in `raisq.yaml` |
-| `isolation` | Keep each attempt off your machine | `isolation:` in `raisq.yaml` |
+| `builder` | Make the change: an agent CLI | `raisq config builder <name>` |
+| `model` | The critic, and every AI job with no tools | `raisq config critic <name>` |
+| `isolation` | Keep each attempt off your machine | `raisq config isolation <docker\|podman\|none>` |
 | `checks` | Pass, fail or a number, from a command | every file with this slot runs |
 | `provides` | Something a check needs: a site, a database, a test secret | by name, when a check asks for it |
 | `extractor` | Turn the result into text for the critic | every file with this slot runs |
@@ -67,8 +67,8 @@ These ship inside RaisQ. Use them with `run: builtin:<name>`:
 
 | `run:` | What it fails on |
 |---|---|
-| `builtin:contacts` | A phone number or email on any page that isn't in your facts. Needs `site`. |
-| `builtin:links` | An internal link that doesn't resolve. Needs `site`. |
+| `builtin:contacts` | A phone number or email on any page that isn't in your facts. Needs `site`, and `port:` says which port it serves on. |
+| `builtin:links` | An internal link that doesn't resolve. Needs `site`, and `port:` says which port it serves on. |
 | `builtin:go-api` | A Go library's exported name removed or changed, unless the task's spec says `changes_api: true`. Adding is fine. |
 
 ## provides
@@ -84,6 +84,8 @@ run: npm run build && npm run start
 port: 3000
 ready: http://localhost:3000
 ```
+
+`port` is where it listens, and `ready` is a URL RaisQ waits for before running the checks that need it.
 
 A secret for the checks only, read on your machine and given to the checks as environment after the agent has exited:
 
@@ -104,7 +106,7 @@ for: builder
 from: host:../design-system:ro
 ```
 
-It's mounted read-only while the agent builds, and a change to it fails the audit. `raisq doctor` refuses one that looks like a secret.
+It's mounted read-only while the agent builds, so the agent can't change it. With `isolation: none` there's no container and nothing is mounted. `raisq doctor` refuses one that looks like a secret.
 
 ## builder
 
@@ -115,7 +117,7 @@ The builder can be any AI coding agent that has a command-line tool and can run 
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude-code` | the login file on Linux, the Keychain on macOS |
 | [Cursor](https://cursor.com/cli) | `cursor` | the Keychain on macOS |
 
-For any other agent, write a plugin file like the one below, or let `raisq plugin add <agent> --slot builder` draft one from its `--help`. The critic is a `model` plugin and works the same way: any AI that can answer a prompt with no tools.
+For any other agent, write a plugin file like the one below, or let `raisq plugin add <agent> --slot builder` draft one from its `--help`, then choose it with `raisq config builder <name>`. The critic is a `model` plugin and works the same way: any AI that can answer a prompt with no tools.
 
 Here's the built-in Claude Code plugin as an example:
 
@@ -126,27 +128,43 @@ vendor: anthropic
 model: sonnet
 tool:
   find: claude --version
+  install_hint: npm i -g @anthropic-ai/claude-code
+# Runs inside the container, unattended, as an unprivileged user.
 run: claude -p --model sonnet --dangerously-skip-permissions < {prompt}
 install: npm i -g @anthropic-ai/claude-code
-image: node:22-bookworm
+# Claude Code reads a project's skills here, not in the standard .agents/skills.
+skills: .claude/skills
+# Your existing login, copied in for one attempt and never mounted: a file on
+# Linux, the Keychain on macOS (the first time, macOS asks to allow it). Only
+# the fields below go in. The refresh token, and any other tool's tokens kept
+# alongside, such as MCP servers', stay on this machine, so what goes in
+# expires on its own and reaches nothing but Claude.
 login:
   - to: /home/raisq/.claude/.credentials.json
     file: ~/.claude/.credentials.json
     command: security find-generic-password -s "Claude Code-credentials" -w
-    keep: [claudeAiOauth.accessToken, claudeAiOauth.expiresAt, claudeAiOauth.scopes]
+    keep:
+      - claudeAiOauth.accessToken
+      - claudeAiOauth.expiresAt
+      - claudeAiOauth.scopes
+      - claudeAiOauth.subscriptionType
+      - claudeAiOauth.rateLimitTier
     expires_at: claudeAiOauth.expiresAt
     refresh: claude -p "Reply with ok" >/dev/null
-login_env: [ANTHROPIC_API_KEY]
+# Used instead, when set: an API key, or a token from `claude setup-token`.
+login_env: [ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN]
+image: node:22-bookworm
 ```
 
 | Field | What |
 |---|---|
 | `run` | Runs in the container, in the project. `{prompt}` is the prompt file. It must write `/raisq/out/result.json` before it exits. |
 | `vendor`, `model` | So review packs can say when the critic is the builder's vendor or model |
+| `tool` | `find`: a command that shows the agent is installed on your machine, such as `claude --version`. `install_hint`: how a person installs it, which `raisq doctor` shows when it's missing. |
 | `install` | Installs the agent in a fresh container, when the image lacks it |
 | `image` | The container image |
 | `login` | Where the agent's login is on your machine, and where it goes inside |
-| `login_env` | Variables passed in when set, used instead of `login` |
+| `login_env` | Variables passed in when set. If any is set, it's used instead of `login`, and the login isn't copied in. |
 | `skills` | Where the agent reads a project's skills, if not the standard `.agents/skills`. `raisq skill <agent>` writes RaisQ's skill there too. Claude Code's is `.claude/skills`. |
 
 Each `login` entry:
@@ -155,7 +173,7 @@ Each `login` entry:
 |---|---|
 | `to` | Where the agent expects it in the container, as a file |
 | `env` | The variable it goes in instead, for an agent that reads its login from the environment, such as Cursor's `CURSOR_AUTH_TOKEN` |
-| `file` | Where it is on your machine |
+| `file` | Where it is on your machine. A folder is copied whole, so use a folder only when the agent keeps nothing else in it. |
 | `command` | Prints it, when it's not a file, such as the macOS Keychain. Used when `file` isn't there. |
 | `keep` | The JSON fields that go in, and nothing else. A login store can hold other tools' tokens, so this lists what to keep, never what to drop. |
 | `expires_at` | The field with the login's expiry |
@@ -233,14 +251,16 @@ for_ai:
   never: Never update screenshots to make a test pass.
 ```
 
-They go with the plugin: remove the file, and the instruction goes too.
+They go with the plugin: remove it with `raisq plugin remove <name>`, and the instruction goes too.
 
 ## Writing a plugin
 
 ```
+raisq plugin list                     # every plugin file in the project
 raisq plugin new checks my-check      # a starting file for a slot, with <...> to fill
 raisq plugin test my-check            # checks it against its slot's contract
 raisq plugin add mytool --slot checks # a model drafts it from `mytool --help`, tests it, asks before saving
+raisq plugin remove my-check          # stop using one
 ```
 
 A plugin for one task only goes in `.raisq/tasks/<task>/plugins/`.

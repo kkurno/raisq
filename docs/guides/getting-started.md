@@ -42,17 +42,19 @@ raisq init
 RaisQ looks at your project and tells you what it found:
 
 ```
-  Found: web app · npm · Docker · claude-code
+  Found: web app · npm · claude-code · Docker
   Preset: web   Builder: claude-code   Critic: claude-code-critic   Isolation: docker
   Plugin files: build, claude-code, claude-code-critic, contacts, links, page-text, site
-  Write these into .raisq/? [y/N]
+  note: one agent CLI: the critic is from the same vendor as the builder, and every review pack says so
+  ? Write these into .raisq/? You can change any of it afterwards [y/N]
+    > y
 ```
 
 - **Builder** is the agent that writes code.
 - **Critic** is the second AI that checks it.
 - **Plugin files** are the tools RaisQ found: your build command, how to start your site, and some checks for websites.
 
-Type `y`. RaisQ then asks a few questions about your project, such as its name and phone number. These become **facts**, which is how RaisQ catches an agent making things up. Press Enter to skip one you don't know.
+Type `y`. If something isn't what you want, such as the builder, accept it anyway and [change it afterwards](#changing-what-init-chose): typing `n` writes nothing at all. RaisQ then asks a few questions about your project, such as its name and phone number. These become **facts**, which is how RaisQ catches an agent making things up. Press Enter to skip one you don't know.
 
 RaisQ creates a `.raisq/` folder in your project. Commit it like any other file.
 
@@ -63,6 +65,18 @@ Run `raisq doctor` to make sure everything is ready:
 ```
 
 If it reports a problem, see [Troubleshooting](troubleshooting.md).
+
+### Changing what init chose
+
+Everything `init` wrote can be changed later:
+
+```
+raisq config                     # see every setting
+raisq config builder cursor      # build with Cursor instead
+raisq plugin remove links        # stop running the links check
+```
+
+[Configuration: changing the setup](../reference/configuration.md#changing-the-setup) lists everything you can change.
 
 ## 3. Describe a task
 
@@ -94,9 +108,11 @@ RaisQ starts the agent and shows each attempt:
 
 ```
   Running add-a-cake-order-page: "Add a cake order page"
-  attempt 1 · built · checks passed · critic: web/form-states: answered no
-  attempt 2 · built · checks passed · critic: 1 claims checked, 0 failed
+  Spec: 4 acceptance criteria · 5 facts · facts@77c962ccf551
+  attempt 1 · built · checks passed · critic: 1 claims checked, 1 failed, 0 unsure · web/form-states: Does every form show what happened after submitting, success or error?: answered no
+  attempt 2 · built · checks passed · critic: 1 claims checked, 0 failed, 0 unsure
   Ready for review.
+  Review: raisq review add-a-cake-order-page
 ```
 
 Here's what happened:
@@ -104,7 +120,7 @@ Here's what happened:
 - **Attempt 1:** the agent built the page and the tests passed. But the critic noticed the form showed nothing after you pressed "Order", so the attempt failed.
 - **Attempt 2:** the agent was told exactly that, added a "Thank you, your order was received" message, and everything passed.
 
-Each attempt takes a few minutes. If the agent has a question while it works, RaisQ asks you right there.
+Each attempt takes a few minutes. If the agent has a question while it works, RaisQ asks you right there in the terminal.
 
 ## 5. Review the result
 
@@ -115,15 +131,18 @@ raisq review add-a-cake-order-page
 The review pack shows what needs your attention first:
 
 ```
-  📝 Choices the spec didn't cover
-  - The order handler acknowledges an order without storing it
-    (the spec didn't say where orders go)
+## 📝 Choices the spec didn't cover
 
-  ✓ Passed
-  - "Cake orders need 2 days' notice." · backed by a confirmed fact
-  - c1: There is a page at /order with a form to order a cake
-  - c2: The form asks for a delivery date
-  ...
+- The order handler acknowledges an order without storing it (the spec didn't say where orders go)
+
+If one of these matters, add it to the spec.
+
+## ✓ Passed
+
+- "Cake orders need 2 days' notice." · backed by a confirmed fact
+- c1: There is a page at /order with a form to order a cake · shown in the output
+- c2: The form asks for a delivery date · shown in the output
+...
 ```
 
 - **Unsure** items, if there are any, come first. These are things RaisQ couldn't decide, such as a claim based on a fact you haven't confirmed.

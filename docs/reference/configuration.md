@@ -1,6 +1,6 @@
 # Configuration
 
-`raisq init` writes everything below. Most projects never edit more than `facts/`.
+`raisq init` writes everything below. It's a starting point: you can change any of it afterwards, with the commands in [Changing the setup](#changing-the-setup) or by editing the files.
 
 ```
 .raisq/
@@ -28,7 +28,7 @@ Each line names a plugin for a slot that takes exactly one, because a choice has
 
 | Key | What | Notes |
 |---|---|---|
-| `preset` | The kind of project `init` found, which picked the starting plugins and rubrics | `web` adds page text, contact-detail and link checks, and website rubrics. `library-go` adds the public API check. A list when a project is more than one kind. After `init`, the files are what count. |
+| `preset` | The kind of project `init` found, which picked the starting plugins and rubrics | `web` adds website rubrics, and, when there's a `start` script, page text, contact-detail and link checks. `library-go` adds the public API check. A list when a project is more than one kind. After `init`, the files are what count. |
 | `builder` | The plugin that builds | A file in `plugins/` with `slot: builder` |
 | `critic` | The plugin that judges, and does every other AI job with no tools | A file with `slot: model`. Any model works. If it's the builder's vendor or model, every review pack says so. |
 | `isolation` | Where attempts run | `docker`, `podman`, or `none` for a disposable machine |
@@ -41,9 +41,32 @@ Defaults you can override, if you need to:
 | `batch` | `8h` | How long a batch keeps starting new tasks |
 | `split_over` | `6` | Criteria a task may have before `raisq task` offers to split it |
 | `spot_check` | `0.2` | Share of done tasks `raisq learn` picks for you to re-read |
-| `keep_artifacts` | `30d` | How long old runs are kept. The latest run of every task, and every run of a parked task, are always kept. |
+| `keep_artifacts` | `30d` | How long old runs are kept. Older ones are removed when a batch starts. The latest run of every task, and every run of a parked task, are always kept. |
 
 There's deliberately no list of checks, no setup or start command, and no allowlist of hosts or commands. Checks are plugin files, the agent installs what it needs, and anything that enters the container goes through a provider.
+
+## Changing the setup
+
+Change what `init` chose with commands. They check a change before saving it, so a typo can't stop the next run:
+
+| To | Run |
+|---|---|
+| See every setting, defaults included | `raisq config` |
+| Change one | `raisq config <key> <value>`, such as `raisq config builder cursor` or `raisq config attempts 5` |
+| Put one back to its default | `raisq config --unset <key>` |
+| Add a check or a provider | `raisq plugin new <slot> <name>`, or `raisq plugin add <tool> --slot <slot>` to have one drafted |
+| Stop running a check | `raisq plugin remove <name>` |
+| Add or change a fact | `raisq fact add <id> "text"` |
+
+What the commands take care of:
+
+- **Choosing a built-in agent brings in its plugin file.** `raisq config builder cursor` copies RaisQ's `cursor.yaml` into `plugins/`, for you to commit and edit. A plugin file the project already has is never overwritten.
+- **A change that removes a safeguard asks first.** `raisq config isolation none` explains what it means and asks you to confirm. Without a terminal, such as from your agent's chat, it needs `--yes`.
+- **Nothing a run depends on can be removed.** `raisq plugin remove` refuses the builder, the critic, the isolation in use, and a provider a check still needs. Removing a [lesson](../guides/tasks.md#learning-from-mistakes) check says which task it came from, and that its mistake won't be checked any more.
+- **A running task isn't affected.** It keeps the settings it started with, and a change applies from the next run.
+- **Your comments in `raisq.yaml` are kept.**
+
+You can still edit any file by hand when you know what you're changing, for example a check's command in its plugin file. For facts, prefer `raisq fact`: it sends back the ready tasks that relied on a fact that changed, which an edit by hand doesn't. Marking such a task done is still refused, because its result no longer matches the facts.
 
 ## facts/
 
@@ -80,7 +103,7 @@ What's true about your project, one file per topic. RaisQ reads every `.yaml` un
 | `tag` | *confirmed* (a person said so), *inferred* (a guess, or a draft nobody checked) or *gap* (known to be unknown) |
 | `kind` | `contact`, `hours`, `price`, `terms` or `rule`. Sets how often it must be reconfirmed. |
 | `said_by`, `said_on` | Who said it, and when |
-| `needs: stakeholder` | You can't confirm this one yourself; it stays inferred until the stakeholder has |
+| `needs: stakeholder` | Someone else, such as a client, must confirm it. It stays inferred until `raisq fact confirm <id> --by "<who>"` records who did. |
 | `recheck` | Override how often it must be reconfirmed, such as `90d` or `12w` |
 | `see` | Another fact's id, so a fact shown in two places is written once |
 
@@ -149,4 +172,4 @@ Standing questions the critic asks of every task: what good looks like for this 
 
 The critic answers *yes*, *no* or *unsure* with a quote, or *n/a* when the output has nothing the question applies to. A question belongs here when a command can't answer it. If a command can, make it a check.
 
-Lessons from `raisq learn` land in `rubrics/lessons.yaml` with a `lesson:` line saying which task they came from.
+Lessons from `raisq learn` that need judgment land in `rubrics/lessons.yaml`. Lessons a command can check land in `plugins/` as `lesson-<name>.yaml`. Either way, a `lesson:` line says which task they came from.

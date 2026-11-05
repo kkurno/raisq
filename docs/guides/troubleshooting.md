@@ -14,11 +14,11 @@ It checks your setup and says what's wrong. Most problems are one of these.
 
 Docker isn't started. Open Docker Desktop, or run `sudo systemctl start docker` on Linux, then try again.
 
-If you can't use Docker, you can still make changes by hand and let RaisQ check them. See [Working with tasks: do it yourself](tasks.md#no-agent-do-it-yourself).
+RaisQ needs Docker or Podman for everything, including checking a change you made yourself, because the checks run in the container too. To use Podman: `raisq config isolation podman`. On a machine you're happy to throw away, such as a CI runner, `raisq config isolation none` runs everything directly on it instead.
 
 **"not logged in on this machine"**
 
-RaisQ uses your agent's existing login, so log in once the normal way, such as by running `claude` for Claude Code or `agent login` for Cursor.
+RaisQ uses your agent's existing login, so log in once the normal way, such as by running `claude` for Claude Code or `cursor-agent login` for Cursor.
 
 On a Mac, the first run may ask you to allow access to the Keychain. Choose **Allow**.
 
@@ -52,6 +52,14 @@ Usually the task needs to be clearer, or it needs something the agent doesn't ha
 
 ```
 raisq review <task> --send-back "what to do differently"
+```
+
+**A task is parked as "blocked"**
+
+Something stopped the attempt before it could be judged, such as a check's tool missing in the container, a dependency that wouldn't install, a provider that never started, or the audit finding something the builder shouldn't have touched. The note in `raisq status` says what, and the review pack has the details. Fix that, then:
+
+```
+raisq review <task> --send-back "what you fixed"
 ```
 
 **A task is parked as "needs something"**
