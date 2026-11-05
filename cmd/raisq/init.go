@@ -64,7 +64,7 @@ func cmdInit(ctx context.Context, args []string) error {
 		fmt.Printf("  note: %s\n", n)
 	}
 	if !*yes {
-		ok, err := newTTY().Confirm("Write these into .raisq/?")
+		ok, err := newTTY().Confirm("Write these into .raisq/? You can change any of it afterwards")
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,8 @@ func cmdInit(ctx context.Context, args []string) error {
 	if _, err := skill.Write(dir, []string{skill.Standard}); err != nil {
 		return err
 	}
-	fmt.Println("  Ready. Next: raisq task \"what you want built\"")
+	fmt.Println("  Ready. To change what was chosen: raisq config, and raisq plugin add or remove.")
+	fmt.Println("  Next: raisq task \"what you want built\"")
 	fmt.Printf("  Or from your agent's chat: /raisq what you want. The skill is in %s; for an agent that reads another folder, run raisq skill <agent>, such as raisq skill claude-code.\n", skill.Dir(skill.Standard))
 	return nil
 }

@@ -26,14 +26,15 @@ import (
 
 // Config is raisq.yaml: one-of slot choices, and defaults a project overrides.
 type Config struct {
-	Preset    any     `yaml:"preset,omitempty"`
-	Builder   string  `yaml:"builder"`
-	Critic    string  `yaml:"critic"`
-	Isolation string  `yaml:"isolation"`
-	Attempts  int     `yaml:"attempts,omitempty"`
-	Batch     string  `yaml:"batch,omitempty"`
-	SplitOver int     `yaml:"split_over,omitempty"`
-	SpotCheck float64 `yaml:"spot_check,omitempty"`
+	Preset    any    `yaml:"preset,omitempty"`
+	Builder   string `yaml:"builder"`
+	Critic    string `yaml:"critic"`
+	Isolation string `yaml:"isolation"`
+	Attempts  int    `yaml:"attempts,omitempty"`
+	Batch     string `yaml:"batch,omitempty"`
+	SplitOver int    `yaml:"split_over,omitempty"`
+	// SpotCheck is a pointer so that 0, no spot checks, differs from unset.
+	SpotCheck *float64 `yaml:"spot_check,omitempty"`
 	// KeepArtifacts is how long run folders are kept.
 	KeepArtifacts string `yaml:"keep_artifacts,omitempty"`
 }
@@ -267,6 +268,15 @@ func (p *Project) Keep() time.Duration {
 		return d
 	}
 	return 30 * 24 * time.Hour
+}
+
+// SpotShare is the share of done tasks raisq learn picks to re-read, 0.2 by
+// default.
+func (p *Project) SpotShare() float64 {
+	if p.Config.SpotCheck != nil {
+		return *p.Config.SpotCheck
+	}
+	return 0.2
 }
 
 // BatchLimit is the batch time limit from raisq.yaml, 8 hours by default.

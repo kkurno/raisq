@@ -166,11 +166,7 @@ func cmdLearn(ctx context.Context, args []string) error {
 				}
 			}
 		}
-		share := proj.Config.SpotCheck
-		if share == 0 {
-			share = 0.2
-		}
-		pick, err := usecase.SpotCheck(d, share, rand.New(rand.NewSource(time.Now().UnixNano())))
+		pick, err := usecase.SpotCheck(d, proj.SpotShare(), rand.New(rand.NewSource(time.Now().UnixNano())))
 		if err != nil {
 			return err
 		}
@@ -340,7 +336,7 @@ func cmdSlots() error {
 
 func cmdPlugin(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return usageErr{"raisq plugin list|new|add|test"}
+		return usageErr{"raisq plugin list|new|add|remove|test"}
 	}
 	proj, err := open()
 	if err != nil {
@@ -366,6 +362,19 @@ func cmdPlugin(ctx context.Context, args []string) error {
 		return nil
 	case "add":
 		return pluginAdd(ctx, proj, args[1:])
+	case "remove":
+		if len(args) < 2 {
+			return usageErr{"raisq plugin remove <name>"}
+		}
+		removed, notes, err := proj.RemovePlugin(args[1])
+		if err != nil {
+			return err
+		}
+		logf("Removed %s.", removed)
+		for _, n := range notes {
+			logf("%s", n)
+		}
+		return nil
 	case "list":
 		for _, f := range proj.Files {
 			fmt.Printf("  %-12s %-24s %s\n", f.Slot, f.Name, filepath.Base(f.Path))
@@ -394,7 +403,7 @@ func cmdPlugin(ctx context.Context, args []string) error {
 		}
 		return fmt.Errorf("no plugin %s", args[1])
 	}
-	return usageErr{"raisq plugin list|new|add|test"}
+	return usageErr{"raisq plugin list|new|add|remove|test"}
 }
 
 func slugify(s string) string {
@@ -515,4 +524,72 @@ func unique(xs []string) []string {
 		}
 	}
 	return out
+}
+
+// cmdConfig shows raisq.yaml's settings, or checks and saves one.
+func cmdConfig(args []string) error {
+	fs := flags("config")
+	unset := fs.Bool("unset", false, "put a setting back to its default")
+	yes := fs.Bool("yes", false, "you've read the warning a change gives, and want it anyway")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	proj, err := open()
+	if err != nil {
+		return err
+	}
+	settings := proj.Settings()
+	switch {
+	case len(pos) == 0:
+		for _, s := range settings {
+			if s.Default {
+				fmt.Printf("  %-15s %s (default)\n", s.Key, s.Value)
+			} else {
+				fmt.Printf("  %-15s %s\n", s.Key, s.Value)
+			}
+		}
+		fmt.Println("\n  raisq config <key> <value> changes one. See docs/reference/configuration.md for what each means.")
+		return nil
+	case len(pos) == 1 && !*unset:
+		for _, s := range settings {
+			if s.Key == strings.ReplaceAll(pos[0], "-", "_") {
+				fmt.Println(s.Value)
+				return nil
+			}
+		}
+		return fmt.Errorf("no setting %q: raisq config lists them", pos[0])
+	}
+	var notes []string
+	if *unset {
+		notes, err = proj.Unset(pos[0])
+	} else {
+		value := strings.Join(pos[1:], " ")
+		notes, err = proj.Set(pos[0], value, *yes)
+		var c registry.ErrConfirm
+		if errors.As(err, &c) {
+			logf("%s", c.Warning)
+			t := person()
+			if t == nil {
+				return fmt.Errorf("not changed. To change it anyway: raisq config %s %s --yes", pos[0], value)
+			}
+			ok, cErr := t.Confirm("Change it anyway?")
+			if cErr != nil || !ok {
+				return fmt.Errorf("not changed")
+			}
+			notes, err = proj.Set(pos[0], value, true)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	for _, s := range proj.Settings() {
+		if s.Key == strings.ReplaceAll(pos[0], "-", "_") {
+			logf("%s: %s", s.Key, s.Value)
+		}
+	}
+	for _, n := range notes {
+		logf("%s", n)
+	}
+	return nil
 }

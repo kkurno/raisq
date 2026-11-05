@@ -1,6 +1,6 @@
 ---
 name: raisq
-description: Drive RaisQ, which has an AI agent build a task in a container and checks the work before a person reviews it. Use when the user types /raisq, or asks to add, run, batch, check on, review, approve, answer or send back a RaisQ task, or to tell RaisQ a fact about the project.
+description: Drive RaisQ, which has an AI agent build a task in a container and checks the work before a person reviews it. Use when the user types /raisq, or asks to add, run, batch, check on, review, approve, answer or send back a RaisQ task, to tell RaisQ a fact about the project, or to change RaisQ's settings or plugins.
 ---
 
 # RaisQ
@@ -36,6 +36,9 @@ Run `raisq status` and say in a line or two what's going on. Then show what they
 | Send a task back | "send it back, the phone number is wrong" | `raisq review <task> --send-back "<their note>"` | Yes |
 | Answer a parked task's questions | their reply to questions you passed on | `raisq review <task> --answer "<their reply>"` | No, pass their reply word for word |
 | Record a fact | "our phone number is 02 123 4567" | `raisq fact add <id> "<their words>"` | Yes, including the id |
+| See the settings | "what's the builder?", "show the settings" | `raisq config` | No |
+| Change a setting | "build with Cursor", "allow 5 tries" | `raisq config <key> <value>` | Yes |
+| Stop running a check | "stop running the links check" | `raisq plugin remove <name>` | Yes |
 | Find out why something won't start | "why won't it run?" | `raisq doctor` | No |
 
 Put the user's words in a single argument, quoted so the shell passes them unchanged.
@@ -46,7 +49,8 @@ RaisQ exists because an AI's work isn't trusted until it's checked. You're an AI
 
 - **Never approve, answer or add a fact on your own.** Even when the answer seems obvious, ask the user.
 - **Never build the task yourself.** The builder AI does the work in a sealed container, and RaisQ checks it there. Don't edit the project's code for a RaisQ task, and don't merge or push a `raisq/` branch unless the user asks you to outside RaisQ.
-- **Don't edit `.raisq/` by hand.** Change it through commands, so RaisQ records the change.
+- **Change `.raisq/` through commands when one exists.** Commands check the change and keep RaisQ's records right; a fact changed by hand, for example, doesn't send back the tasks that relied on it. Edit a file by hand only when the user asks you to, or when no command covers it, such as changing a check's command in its plugin file. Say which file you're changing first.
+- **If a command warns and asks for `--yes`, tell the user the warning in full and let them decide.** Never add `--yes` on your own.
 
 ## Questions
 
