@@ -134,3 +134,72 @@ func TestPruneKeepsLatestAndParked(t *testing.T) {
 		t.Fatal("a parked task keeps all its evidence")
 	}
 }
+
+// With nobody at a terminal, questions wait on the task instead of failing,
+// and answering them settles the answers as raisq task would have.
+func TestUnattendedTaskParksOnQuestionsThenAnswerSettles(t *testing.T) {
+	s := store.New(filepath.Join(t.TempDir(), ".raisq"))
+	m := &fake.Model{Fn: func(p string) string {
+		if strings.Contains(p, "Sort each answer") {
+			if !strings.Contains(p, "Same-day orders? · Minimum order? → no, and 500 baht") {
+				t.Errorf("the settle call should get the questions with the answer: %s", p)
+			}
+			return `{"criteria":[{"id":"c1","text":"Customers pick a date"},{"id":"c2","text":"No same-day orders"}],
+			 "facts":[{"id":"orders/minimum","topic":"orders","text":"Minimum order 500 baht","kind":"price"}]}`
+		}
+		return `{"name":"cake-orders","title":"Add a cake order form","criteria":[{"id":"c1","text":"Customers pick a date"}],
+		 "questions":["Same-day orders?","Minimum order?"]}`
+	}}
+	d := Deps{Store: s, Model: m}
+	_, err := AddTask(context.Background(), d, "Add a cake order form", "", nil)
+	must(t, err)
+	st, _ := s.LoadState("cake-orders")
+	if st.State != domain.Parked || st.Reason != domain.Question || !strings.Contains(st.Note, "Minimum order?") {
+		t.Fatalf("a draft with questions and nobody to ask should park on them: %+v", st)
+	}
+	if _, err := Next(d); err == nil {
+		t.Fatal("a task still waiting on answers must not run")
+	}
+
+	must(t, Review(context.Background(), d, "cake-orders", "answer", "no, and 500 baht"))
+	st, _ = s.LoadState("cake-orders")
+	spec, _ := s.LoadSpec("cake-orders")
+	if st.State != domain.Queued || len(spec.Criteria) != 2 {
+		t.Fatalf("answered: want queued with settled criteria, got %+v %+v", st, spec)
+	}
+	facts, _ := s.LoadFacts()
+	if f, ok := facts.Get("orders/minimum"); !ok || f.SaidBy != "you" {
+		t.Fatalf("a fact from the answer is said by the person: %+v", f)
+	}
+}
+
+// An answer can't be made up for a task nobody asked about, or be empty.
+func TestAnswerOnlyForAQuestion(t *testing.T) {
+	s := store.New(filepath.Join(t.TempDir(), ".raisq"))
+	must(t, s.SaveSpec(domain.TaskSpec{Name: "t", Criteria: []domain.Criterion{{ID: "c1", Text: "x"}}}))
+	must(t, s.SaveState("t", domain.TaskState{State: domain.Parked, Reason: domain.OutOfAttempts, Note: "3 attempts used"}))
+	d := Deps{Store: s, Model: &fake.Model{Fn: func(string) string { return `{}` }}}
+	if err := Review(context.Background(), d, "t", "answer", "yes"); err == nil {
+		t.Fatal("a task parked for another reason has no question to answer")
+	}
+	must(t, s.SaveState("t", domain.TaskState{State: domain.Parked, Reason: domain.Question, Note: "Which colour?"}))
+	if err := Review(context.Background(), d, "t", "answer", "  "); err == nil {
+		t.Fatal("an empty answer must be refused")
+	}
+}
+
+// A contradiction needs a person to pick; with none, the fact on file stays.
+func TestUnattendedAnswerKeepsAContradictedFact(t *testing.T) {
+	s := store.New(filepath.Join(t.TempDir(), ".raisq"))
+	must(t, s.SaveFact(domain.Fact{ID: "business/phone", Text: "02 111 1111", Kind: "contact", Tag: domain.Confirmed, SaidBy: "you"}, "business"))
+	must(t, s.SaveSpec(domain.TaskSpec{Name: "t", Title: "Contact page", Criteria: []domain.Criterion{{ID: "c1", Text: "x"}}}))
+	must(t, s.SaveState("t", domain.TaskState{State: domain.Parked, Reason: domain.Question, Note: "Which phone?"}))
+	m := &fake.Model{Fn: func(string) string {
+		return `{"criteria":[],"facts":[{"id":"business/phone","topic":"business","text":"02 999 9999","kind":"contact","contradicts":"business/phone"}]}`
+	}}
+	must(t, Review(context.Background(), Deps{Store: s, Model: m}, "t", "answer", "02 999 9999"))
+	facts, _ := s.LoadFacts()
+	if f, _ := facts.Get("business/phone"); f.Text != "02 111 1111" {
+		t.Fatalf("only a person can replace a fact on file: %+v", f)
+	}
+}

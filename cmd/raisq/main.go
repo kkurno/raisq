@@ -11,6 +11,10 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
+
+	"golang.org/x/term"
+
+	"github.com/kkurno/raisq/usecase"
 )
 
 // version is set by the release build. A `go install` build gets the
@@ -134,6 +138,15 @@ func logf(format string, a ...any) { fmt.Printf("  "+format+"\n", a...) }
 type tty struct{ r *bufio.Reader }
 
 func newTTY() *tty { return &tty{r: bufio.NewReader(os.Stdin)} }
+
+// person is who can answer now: someone at a terminal, or nil when RaisQ runs
+// from an agent's chat, a script or CI, and questions wait in the task's state.
+func person() usecase.Asker {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return nil
+	}
+	return newTTY()
+}
 
 func (t *tty) Ask(q string) (string, error) {
 	fmt.Printf("  ? %s\n    > ", q)

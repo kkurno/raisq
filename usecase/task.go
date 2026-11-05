@@ -32,7 +32,8 @@ type Settled struct {
 	} `json:"facts"`
 }
 
-// Asker gets a person's answers. The CLI fills it; batches never call it.
+// Asker gets a person's answers. The CLI fills it only when someone is at a
+// terminal; with none, whatever needs a person waits in the task's state.
 type Asker interface {
 	Ask(question string) (string, error)
 	Confirm(prompt string) (bool, error)
@@ -62,30 +63,19 @@ func AddTask(ctx context.Context, d Deps, request string, outside string, ask As
 		return domain.TaskSpec{}, err
 	}
 	if draft.Duplicate != "" {
+		if ask == nil {
+			return domain.TaskSpec{}, fmt.Errorf("not added: it looks like %s, already queued. If it's different, say how in the request", draft.Duplicate)
+		}
 		ok, err := ask.Confirm(fmt.Sprintf("This looks like %s, already queued. Add it anyway?", draft.Duplicate))
 		if err != nil || !ok {
 			return domain.TaskSpec{}, fmt.Errorf("not added: duplicates %s", draft.Duplicate)
 		}
 	}
 
-	var answers []string
-	for _, q := range draft.Questions {
-		a, err := ask.Ask(q)
-		if err != nil {
-			return domain.TaskSpec{}, err
-		}
-		answers = append(answers, q+" → "+a)
-	}
-
 	spec := domain.TaskSpec{Name: slug(firstNonEmpty(draft.Name, draft.Title, request)), Title: firstNonEmpty(draft.Title, request),
 		Criteria: draft.Criteria, RestsOn: draft.RestsOn, Outside: outside != ""}
 	if outside != "" {
 		spec.Source = "outside"
-	}
-	if len(answers) > 0 {
-		if err := settle(ctx, d, request, &spec, draft.RestsOn, answers, facts, ask); err != nil {
-			return spec, err
-		}
 	}
 	if spec.Name == "" {
 		spec.Name = "task"
@@ -96,25 +86,58 @@ func AddTask(ctx context.Context, d Deps, request string, outside string, ask As
 		}
 		spec.Name = fmt.Sprintf("%s-%d", strings.TrimRight(spec.Name, "-0123456789"), i)
 	}
+	added := d.now().UTC().Format(time.RFC3339)
+
+	// With nobody to ask, the draft waits parked on its questions, and
+	// answering it later settles the answers the same way.
+	if ask == nil && len(draft.Questions) > 0 {
+		if len(spec.Criteria) == 0 {
+			spec.Criteria = []domain.Criterion{{ID: "c1", Text: spec.Title}}
+		}
+		if err := d.Store.SaveSpec(spec); err != nil {
+			return spec, err
+		}
+		return spec, d.Store.SaveState(spec.Name, domain.TaskState{State: domain.Parked, Reason: domain.Question,
+			Note: strings.Join(draft.Questions, QuestionSep), Added: added})
+	}
+	var answers []string
+	for _, q := range draft.Questions {
+		a, err := ask.Ask(q)
+		if err != nil {
+			return domain.TaskSpec{}, err
+		}
+		answers = append(answers, q+" → "+a)
+	}
+	if len(answers) > 0 {
+		if err := settle(ctx, d, request, &spec, draft.RestsOn, answers, facts, ask); err != nil {
+			return spec, err
+		}
+	}
 	if err := d.Store.SaveSpec(spec); err != nil {
 		return spec, err
 	}
-	added := d.now().UTC().Format(time.RFC3339)
 	limit := d.SplitOver
 	if limit <= 0 {
 		limit = 6
 	}
 	if len(spec.Criteria) > limit {
-		ok, err := ask.Confirm(fmt.Sprintf("%d acceptance criteria is a big task. Split it into parts that each run on their own, then check the whole?", len(spec.Criteria)))
-		if err != nil {
-			return spec, err
-		}
-		if ok {
-			return spec, split(d, spec, limit, added)
+		if ask == nil {
+			d.log("%d acceptance criteria is a big task. It's queued whole; at a terminal, raisq task offers to split one this size.", len(spec.Criteria))
+		} else {
+			ok, err := ask.Confirm(fmt.Sprintf("%d acceptance criteria is a big task. Split it into parts that each run on their own, then check the whole?", len(spec.Criteria)))
+			if err != nil {
+				return spec, err
+			}
+			if ok {
+				return spec, split(d, spec, limit, added)
+			}
 		}
 	}
 	return spec, d.Store.SaveState(spec.Name, domain.TaskState{State: domain.Queued, Added: added})
 }
+
+// QuestionSep joins a parked draft's questions in its note.
+const QuestionSep = " · "
 
 // split makes one part per group of criteria, run in order on one branch,
 // and keeps the whole as a check-only task that waits for them.
@@ -171,6 +194,11 @@ func settle(ctx context.Context, d Deps, request string, spec *domain.TaskSpec, 
 	for _, nf := range s.Facts {
 		if nf.Contradicts != "" {
 			old, _ := facts.Get(nf.Contradicts)
+			if ask == nil {
+				// Only a person can say which is right, so the fact on file stays.
+				d.log("Kept %s: %q. Your answer says %q. If that's right: raisq fact add %s %q", nf.Contradicts, old.Text, nf.Text, nf.Contradicts, nf.Text)
+				continue
+			}
 			a, err := ask.Ask(fmt.Sprintf("Your answer says %q, but %s says %q. Which is right? (new/old)", nf.Text, nf.Contradicts, old.Text))
 			if err != nil {
 				return err
@@ -296,16 +324,37 @@ func Review(ctx context.Context, d Deps, task, decision, note string) error {
 			return err
 		}
 		st, err = st.Move(domain.Done)
-	case "send-back", "answer":
+	case "answer":
+		if st.State != domain.Parked || st.Reason != domain.Question {
+			return fmt.Errorf("%s has no question to answer; it's %s", task, st.State)
+		}
+		if strings.TrimSpace(note) == "" {
+			return fmt.Errorf("an answer can't be empty")
+		}
+		question := st.Note
+		if st, err = st.Move(domain.Queued); err != nil {
+			return err
+		}
+		spec, err := d.Store.LoadSpec(task)
+		if err != nil {
+			return err
+		}
+		facts, err := d.Store.LoadFacts()
+		if err != nil {
+			return err
+		}
+		if err := settle(ctx, d, spec.Title, &spec, spec.RestsOn, []string{question + " → " + note}, facts, d.Ask); err != nil {
+			return err
+		}
+		if err := d.Store.SaveSpec(spec); err != nil {
+			return err
+		}
+	case "send-back":
 		st, err = st.Move(domain.Queued)
 		if err == nil && note != "" {
 			if spec, err := d.Store.LoadSpec(task); err == nil {
 				id := fmt.Sprintf("c%d", len(spec.Criteria)+1)
-				prefix := "From review: "
-				if decision == "answer" {
-					prefix = "Decided: "
-				}
-				spec.Criteria = append(spec.Criteria, domain.Criterion{ID: id, Text: prefix + note})
+				spec.Criteria = append(spec.Criteria, domain.Criterion{ID: id, Text: "From review: " + note})
 				if err := d.Store.SaveSpec(spec); err != nil {
 					return err
 				}

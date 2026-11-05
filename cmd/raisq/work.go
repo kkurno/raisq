@@ -82,11 +82,19 @@ func cmdTask(ctx context.Context, args []string) error {
 		}
 	}
 	d.SplitOver = proj.Config.SplitOver
-	spec, err := usecase.AddTask(ctx, d, request, outside, newTTY())
+	d.Log = logf
+	spec, err := usecase.AddTask(ctx, d, request, outside, person())
 	if err != nil {
 		return err
 	}
-	if st, err := proj.Store.LoadState(spec.Name); err == nil && st.CheckOnly {
+	if st, err := proj.Store.LoadState(spec.Name); err == nil && st.State == domain.Parked {
+		logf("Parked: %s, until these are answered:", spec.Name)
+		for _, q := range strings.Split(st.Note, usecase.QuestionSep) {
+			logf("  ? %s", q)
+		}
+		logf("Answer all of them in one go: raisq review %s --answer \"...\"", spec.Name)
+		return nil
+	} else if err == nil && st.CheckOnly {
 		logf("Queued: %s, split into %d parts that run in order, then the whole is checked together", spec.Name, len(st.After))
 		return nil
 	}
@@ -131,7 +139,7 @@ func runOne(ctx context.Context, proj *registry.Project, task string, manual, wa
 	}
 	d.Log = logf
 	if watched {
-		d.Ask = newTTY()
+		d.Ask = person()
 	}
 	d.Reload = func() (usecase.Deps, error) {
 		fresh, err := registry.Open(proj.Dir)
@@ -317,6 +325,7 @@ func cmdReview(ctx context.Context, args []string) error {
 		logf("Sent back to the queue with: %s", *back)
 		logf("If this mistake could happen again, `raisq learn %s %q` makes it a check.", task, *back)
 	case *answer != "":
+		d.Ask, d.Log = person(), logf
 		if err := usecase.Review(ctx, d, task, "answer", *answer); err != nil {
 			return err
 		}
