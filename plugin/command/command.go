@@ -50,6 +50,9 @@ type File struct {
 	Model    string         `yaml:"model,omitempty"`
 	Vendor   string         `yaml:"vendor,omitempty"`
 	Install  string         `yaml:"install,omitempty"`
+	// Skills is where the agent reads a project's skills, when that isn't the
+	// Agent Skills standard's .agents/skills.
+	Skills string `yaml:"skills,omitempty"`
 	// spec source
 	Matches string `yaml:"matches,omitempty"`
 	// documentation and tool metadata

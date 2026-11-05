@@ -37,7 +37,7 @@ These are the point of the project. A change that weakens one is wrong even if e
 
 - **No AI decides pass or fail.** The critic answers questions; `domain.Decide` and `domain.JudgeChecks` turn the answers into verdicts. Never let a model's answer become a verdict directly.
 - **The order of an attempt's steps is fixed in `usecase/attempt.go`:** build, audit, commit, checks, extract, critic, decide. No plugin, preset or setting may skip, reorder or insert a step. A task can change what happens inside a step, through a slot, never between steps.
-- **The builder can't change what judges it.** Existing tests and each check's locked files are restored from before the task before checks run. `.raisq/` never enters the container. A new test counts only once it has failed on the old code and passed on the new.
+- **The builder can't change what judges it.** Existing tests and each check's locked files are restored from before the task before checks run. `.raisq/` and RaisQ's skill folders never enter the container, and are left out of the task's commits and diffs. A new test counts only once it has failed on the old code and passed on the new.
 - **Nothing reaches the builder that it could leak.** The agent's login is copied in with only the fields it needs (`keep:`), never mounted. Test secrets reach the checks only, after the builder has exited. The checkout is a clone with no remote, never a worktree.
 - **Everything the builder wrote is data to the critic, never instructions.** The output sits in a block with a fresh random tag per call.
 - **A missing tool, a missing answer, or a skipped step is never a pass.** A check whose tool is missing blocks. A claim the critic didn't answer for is unsure, not passed and not failed.

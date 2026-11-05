@@ -18,9 +18,23 @@ import (
 type Git struct {
 	Project string // the user's repo
 	Work    string // where task checkouts are made, outside the repo
+	// Private is RaisQ's own files in the repo: never in a checkout, and never
+	// in a task's commits or diffs.
+	Private []string
 }
 
-func New(project, work string) *Git { return &Git{Project: project, Work: work} }
+func New(project, work string, private ...string) *Git {
+	return &Git{Project: project, Work: work, Private: append([]string{".raisq"}, private...)}
+}
+
+// outside is a pathspec for the whole repo except RaisQ's own files.
+func (g *Git) outside() []string {
+	spec := []string{"--", "."}
+	for _, p := range g.Private {
+		spec = append(spec, ":(exclude)"+p)
+	}
+	return spec
+}
 
 func run(ctx context.Context, dir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
@@ -43,7 +57,7 @@ func (g *Git) Head(ctx context.Context) (string, error) {
 }
 
 func (g *Git) Clean(ctx context.Context) (bool, error) {
-	out, err := run(ctx, g.Project, "status", "--porcelain", "--", ".", ":(exclude).raisq")
+	out, err := run(ctx, g.Project, append([]string{"status", "--porcelain"}, g.outside()...)...)
 	return out == "", err
 }
 
@@ -87,10 +101,12 @@ func (g *Git) Prepare(ctx context.Context, task, branch, base string) (string, e
 			return "", err
 		}
 	}
-	// .raisq/ is never inside isolation: the builder reads the frozen spec
-	// through its own mount, and nothing here judges it.
-	if err := os.RemoveAll(filepath.Join(dir, ".raisq")); err != nil {
-		return "", err
+	// RaisQ's files are never inside isolation: the builder reads the frozen
+	// spec through its own mount, and has no use for the rest.
+	for _, p := range g.Private {
+		if err := os.RemoveAll(filepath.Join(dir, p)); err != nil {
+			return "", err
+		}
 	}
 	return dir, g.snapshotGit(dir)
 }
@@ -151,9 +167,9 @@ func (g *Git) AuditGit(ctx context.Context, dir string) error {
 	return nil
 }
 
-// Commit stages everything except .raisq/ and commits as raisq.
+// Commit stages everything except RaisQ's files and commits as raisq.
 func (g *Git) Commit(ctx context.Context, dir, message string) (string, bool, error) {
-	if _, err := run(ctx, dir, "add", "-A", "--", ".", ":(exclude).raisq"); err != nil {
+	if _, err := run(ctx, dir, append([]string{"add", "-A"}, g.outside()...)...); err != nil {
 		return "", false, err
 	}
 	if out, _ := run(ctx, dir, "diff", "--cached", "--name-only"); out == "" {
@@ -173,7 +189,7 @@ func (g *Git) Bring(ctx context.Context, dir, branch string) error {
 }
 
 func (g *Git) Diff(ctx context.Context, dir, base, head string) (string, error) {
-	return run(ctx, dir, "diff", "--no-color", "--no-ext-diff", base, head, "--", ".", ":(exclude).raisq")
+	return run(ctx, dir, append([]string{"diff", "--no-color", "--no-ext-diff", base, head}, g.outside()...)...)
 }
 
 func (g *Git) Changed(ctx context.Context, dir, base, head string) ([]string, error) {
@@ -190,7 +206,7 @@ func (g *Git) Restore(ctx context.Context, dir, base string, globs []string) ([]
 	if len(globs) == 0 {
 		return nil, nil, nil
 	}
-	out, err := run(ctx, dir, "diff", "--name-status", "--no-renames", base, "--", ".", ":(exclude).raisq")
+	out, err := run(ctx, dir, append([]string{"diff", "--name-status", "--no-renames", base}, g.outside()...)...)
 	if err != nil {
 		return nil, nil, err
 	}

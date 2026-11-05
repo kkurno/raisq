@@ -8,6 +8,8 @@ tool:
 # Runs inside the container, unattended, as an unprivileged user.
 run: claude -p --model sonnet --dangerously-skip-permissions < {prompt}
 install: npm i -g @anthropic-ai/claude-code
+# Claude Code reads a project's skills here, not in the standard .agents/skills.
+skills: .claude/skills
 # Your existing login, copied in for one attempt and never mounted: a file on
 # Linux, the Keychain on macOS (the first time, macOS asks to allow it). Only
 # the fields below go in. The refresh token, and any other tool's tokens kept

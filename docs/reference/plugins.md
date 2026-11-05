@@ -147,6 +147,7 @@ login_env: [ANTHROPIC_API_KEY]
 | `image` | The container image |
 | `login` | Where the agent's login is on your machine, and where it goes inside |
 | `login_env` | Variables passed in when set, used instead of `login` |
+| `skills` | Where the agent reads a project's skills, if not the standard `.agents/skills`. `raisq skill <agent>` writes RaisQ's skill there too. Claude Code's is `.claude/skills`. |
 
 Each `login` entry:
 

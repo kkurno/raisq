@@ -13,6 +13,8 @@
 
 All of it is plain text, meant to be committed. Run history, pinned versions and baselines are local and listed in `.raisq/.gitignore`.
 
+`init` also writes RaisQ's agent skill to `.agents/skills/raisq/SKILL.md`, so you can use RaisQ from your agent's chat. It's written by RaisQ, so don't edit it: `raisq skill` overwrites it. See [Using RaisQ from chat](../guides/chat.md).
+
 ## raisq.yaml
 
 ```yaml

@@ -76,6 +76,18 @@ raisq batch
 
 A batch checks your setup before it starts, so it doesn't fail halfway through the night. It never waits for you: a task that needs you is parked, and the next one starts. It stops cleanly at its time limit (8 hours by default) or your AI account's usage limit, and `raisq batch` picks up where it left off. When you're back, a report lists what's ready to review and what needs you. [More on batches](docs/guides/batch.md).
 
+## Or just ask your agent
+
+You don't have to learn the commands. In your AI agent's chat, type `/raisq` and say what you want:
+
+```
+/raisq add a contact page with our phone number
+/raisq what's ready?
+/raisq approve it
+```
+
+Your agent runs RaisQ for you and asks you whatever RaisQ needs to know. It never approves or answers on your behalf. [More on using RaisQ from chat](docs/guides/chat.md).
+
 ## Principles
 
 RaisQ is built on a few ideas. They're why it works the way it does.
@@ -142,6 +154,7 @@ The [getting started guide](docs/guides/getting-started.md) walks through all of
 |---|---|
 | Try it step by step, with an example | [Getting started](docs/guides/getting-started.md) |
 | Queue several tasks and walk away | [Batches](docs/guides/batch.md) |
+| Use RaisQ by chatting with my agent | [Using RaisQ from chat](docs/guides/chat.md) |
 | Write, run and review tasks | [Working with tasks](docs/guides/tasks.md) |
 | Tell RaisQ the facts about my project | [Facts](docs/guides/facts.md) |
 | Fix something that isn't working | [Troubleshooting](docs/guides/troubleshooting.md) |

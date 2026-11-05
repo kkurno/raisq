@@ -15,6 +15,7 @@ import (
 	"github.com/kkurno/raisq/domain"
 	"github.com/kkurno/raisq/plugin/detect"
 	"github.com/kkurno/raisq/plugin/registry"
+	"github.com/kkurno/raisq/plugin/skill"
 )
 
 func cmdInit(ctx context.Context, args []string) error {
@@ -112,7 +113,11 @@ func cmdInit(ctx context.Context, args []string) error {
 			return err
 		}
 	}
+	if _, err := skill.Write(dir, []string{skill.Standard}); err != nil {
+		return err
+	}
 	fmt.Println("  Ready. Next: raisq task \"what you want built\"")
+	fmt.Printf("  Or from your agent's chat: /raisq what you want. The skill is in %s; for an agent that reads another folder, run raisq skill <agent>, such as raisq skill claude-code.\n", skill.Dir(skill.Standard))
 	return nil
 }
 

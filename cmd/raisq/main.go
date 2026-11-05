@@ -42,6 +42,7 @@ Now and then:
   raisq status                        each task's state
   raisq fact add|list|confirm         project facts
   raisq learn <task> "what was wrong" turn a mistake into a check or a rubric
+  raisq skill [agent]                 use RaisQ from your agent's chat: /raisq ...
   raisq doctor                        when something isn't working
   raisq bench critic                  measure the critic before trusting it
   raisq slots | plugin list|new|add|test   plugins
@@ -88,6 +89,8 @@ func run(ctx context.Context, args []string) error {
 		return cmdFact(ctx, rest)
 	case "learn":
 		return cmdLearn(ctx, rest)
+	case "skill":
+		return cmdSkill(rest)
 	case "doctor":
 		return cmdDoctor(ctx, rest)
 	case "bench":

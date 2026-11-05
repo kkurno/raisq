@@ -42,6 +42,17 @@ func Builtin(name string) (string, bool) {
 	return string(data), err == nil
 }
 
+// Builtins is every built-in plugin file, by name.
+func Builtins() map[string]string {
+	out := map[string]string{}
+	entries, _ := builtins.ReadDir("builtins")
+	for _, e := range entries {
+		n := strings.TrimSuffix(e.Name(), ".yaml")
+		out[n], _ = Builtin(n)
+	}
+	return out
+}
+
 // onPath is replaceable in tests.
 var onPath = func(bin string) bool { _, err := exec.LookPath(bin); return err == nil }
 

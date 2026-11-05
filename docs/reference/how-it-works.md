@@ -129,7 +129,7 @@ The agent works with its permission prompts off, because nobody is there to appr
 - **Every command runs as an unprivileged user** with your uid, so files it writes stay yours.
 - **The agent's login is copied, never mounted.** Only the fields the agent needs go in. A refresh token and other tools' tokens kept alongside it stay on your machine. On macOS, Claude Code's login is read from the Keychain, and macOS asks once to allow it.
 - **Test secrets reach only the checks,** after the agent has exited, through a provider (see [plugins](plugins.md#provides)).
-- **`.raisq/` never enters the container.** The agent can't read your rubrics or change what judges it.
+- **`.raisq/` and RaisQ's agent skill never enter the container.** The agent can't read your rubrics or change what judges it, and it can't change the skill that tells your chat agent how to use RaisQ. They're also left out of every commit and diff the task makes.
 
 `isolation: none` runs everything on the host. It's for a machine that's disposable anyway, such as a CI runner, and every review pack says so.
 

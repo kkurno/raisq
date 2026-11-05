@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 	"github.com/kkurno/raisq/plugin/agent"
 	"github.com/kkurno/raisq/plugin/builtin"
 	"github.com/kkurno/raisq/plugin/command"
+	"github.com/kkurno/raisq/plugin/detect"
 	"github.com/kkurno/raisq/plugin/docker"
 	"github.com/kkurno/raisq/plugin/git"
+	"github.com/kkurno/raisq/plugin/skill"
 	"github.com/kkurno/raisq/plugin/store"
 	"github.com/kkurno/raisq/slot"
 	"github.com/kkurno/raisq/usecase"
@@ -60,8 +63,51 @@ func Open(dir string) (*Project, error) {
 		return nil, err
 	}
 	work := filepath.Join(os.TempDir(), "raisq-work", filepath.Base(dir)+"-"+shortHash(dir))
-	return &Project{Dir: dir, Raisq: raisq, Config: cfg, Files: files,
-		Store: store.New(raisq), Git: git.New(dir, work), WorkDir: work}, nil
+	p := &Project{Dir: dir, Raisq: raisq, Config: cfg, Files: files, Store: store.New(raisq), WorkDir: work}
+	var private []string
+	for _, s := range p.SkillFolders() {
+		private = append(private, skill.Dir(s))
+	}
+	p.Git = git.New(dir, work, private...)
+	return p, nil
+}
+
+// Agent is an agent's plugin file, the project's own or else the built-in one.
+func (p *Project) Agent(name string) (command.File, bool) {
+	for _, f := range p.Files {
+		if f.Name == name && (f.Slot == "builder" || f.Slot == "model") {
+			return f, true
+		}
+	}
+	var f command.File
+	if body, ok := detect.Builtin(name); ok && yaml.Unmarshal([]byte(body), &f) == nil && (f.Slot == "builder" || f.Slot == "model") {
+		return f, true
+	}
+	return command.File{}, false
+}
+
+// SkillFolders is every folder RaisQ's skill may be written to: the standard
+// one, and each known agent's own, so none of them reaches a builder.
+func (p *Project) SkillFolders() []string {
+	out := []string{skill.Standard}
+	seen := map[string]bool{skill.Standard: true}
+	add := func(f command.File) {
+		if f.Skills != "" && !seen[f.Skills] {
+			seen[f.Skills] = true
+			out = append(out, f.Skills)
+		}
+	}
+	for _, f := range p.Files {
+		add(f)
+	}
+	for _, body := range detect.Builtins() {
+		var f command.File
+		if yaml.Unmarshal([]byte(body), &f) == nil {
+			add(f)
+		}
+	}
+	sort.Strings(out[1:])
+	return out
 }
 
 func shortHash(s string) string {

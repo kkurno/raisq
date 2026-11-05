@@ -17,6 +17,7 @@ import (
 	"github.com/kkurno/raisq/plugin/login"
 	"github.com/kkurno/raisq/plugin/proc"
 	"github.com/kkurno/raisq/plugin/registry"
+	"github.com/kkurno/raisq/plugin/skill"
 	"github.com/kkurno/raisq/slot"
 	"github.com/kkurno/raisq/usecase"
 )
@@ -228,6 +229,9 @@ func cmdDoctor(ctx context.Context, args []string) error {
 
 func doctor(ctx context.Context, proj *registry.Project) []string {
 	var problems []string
+	if stale := skill.Stale(proj.Dir, proj.SkillFolders()); len(stale) > 0 {
+		problems = append(problems, fmt.Sprintf("the agent skill in %s isn't this RaisQ version's: run raisq skill", strings.Join(stale, ", ")))
+	}
 	if _, err := proj.Store.LoadFacts(); err != nil {
 		problems = append(problems, "facts: "+err.Error())
 	}
@@ -467,4 +471,48 @@ func pluginAdd(ctx context.Context, proj *registry.Project, args []string) error
 	}
 	logf("Saved %s.", p)
 	return nil
+}
+
+// cmdSkill writes RaisQ's agent skill into the project: to the standard folder,
+// to each named agent's own, and over every copy already there, so one run
+// after an update refreshes them all.
+func cmdSkill(args []string) error {
+	proj, err := open()
+	if err != nil {
+		return err
+	}
+	folders := []string{skill.Standard}
+	for _, name := range args {
+		f, ok := proj.Agent(name)
+		if !ok {
+			return fmt.Errorf("no agent plugin %s: see raisq plugin list", name)
+		}
+		if f.Skills == "" {
+			logf("%s reads the standard folder, %s.", name, skill.Standard)
+			continue
+		}
+		folders = append(folders, f.Skills)
+	}
+	folders = append(folders, skill.Written(proj.Dir, proj.SkillFolders())...)
+	wrote, err := skill.Write(proj.Dir, unique(folders))
+	if err != nil {
+		return err
+	}
+	for _, p := range wrote {
+		logf("Wrote %s", p)
+	}
+	logf("In your agent's chat: /raisq what you want, such as /raisq add a contact page. Commit it so your team has it too.")
+	return nil
+}
+
+func unique(xs []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, x := range xs {
+		if !seen[x] {
+			seen[x] = true
+			out = append(out, x)
+		}
+	}
+	return out
 }

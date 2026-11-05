@@ -154,6 +154,7 @@ raisq review add-a-cake-order-page --send-back "Save orders to orders.json"
 
 ## What's next
 
+- [Using RaisQ from chat](chat.md): do all of this by typing `/raisq` and what you want in your agent's chat.
 - [Working with tasks](tasks.md): queue several tasks and run them while you're away.
 - [Facts](facts.md): tell RaisQ what's true about your project, so it can catch made-up details.
 - [Plugins](../reference/plugins.md): add a test runner or tool RaisQ didn't find.
