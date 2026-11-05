@@ -100,16 +100,16 @@ The work is on its own git branch, `raisq/add-a-contact-page`. Merge it like any
 
 ### Or just ask your agent
 
-You can take the same steps from your AI agent's chat, in your own words:
+You can take the same steps from your AI agent's chat. Type `/raisq`, then say what you want done and to which task, in your own words. Each request matches one command:
 
 ```
-/raisq add a contact page
-/raisq run it
-/raisq show me the result
-/raisq approve it
+/raisq add a contact page              → raisq task "Add a contact page"
+/raisq run the contact page            → raisq run add-a-contact-page
+/raisq show me the contact page        → raisq review add-a-contact-page
+/raisq approve the contact page        → raisq review add-a-contact-page --done
 ```
 
-Your agent runs the commands for you, and asks you whatever RaisQ needs to know. It never approves or answers for you. `raisq init` has already set this up; with Claude Code, also run `raisq skill claude-code` once. [More on using RaisQ from chat](docs/guides/chat.md).
+Your agent runs the command and tells you what happened. When a request could mean two things, it asks rather than guesses, and it checks with you before approving anything. It never answers RaisQ's questions for you. `raisq init` has already set this up; with Claude Code, also run `raisq skill claude-code` once. [More on using RaisQ from chat](docs/guides/chat.md).
 
 The [getting started guide](docs/guides/getting-started.md) walks through all of this with a real example.
 
