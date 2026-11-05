@@ -52,6 +52,15 @@ func run(ctx context.Context, dir string, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// Person is the name git puts on this person's commits, or "" if none is set.
+func (g *Git) Person(ctx context.Context) string {
+	out, err := run(ctx, g.Project, "config", "user.name")
+	if err != nil {
+		return ""
+	}
+	return out
+}
+
 func (g *Git) Head(ctx context.Context) (string, error) {
 	return run(ctx, g.Project, "rev-parse", "HEAD")
 }

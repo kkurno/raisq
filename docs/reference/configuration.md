@@ -4,21 +4,32 @@
 
 ```
 .raisq/
-  raisq.yaml
-  facts/
-  tasks/
-  plugins/
-  rubrics/
+  facts/          what's true about the project          shared
+  plugins/        the checks and tools RaisQ runs        shared
+  rubrics/        standing questions for the critic      shared
+  local/          this machine's: never committed
+    config.yaml     which agent and container tool to use here
+    tasks/          your tasks, their runs and review packs
+    snapshots/      the facts as each run saw them
+    baselines/      what already failed before a task
+    batch-report.md your last batch
 ```
 
-All of it is plain text, meant to be committed. Run history, pinned versions and baselines are local and listed in `.raisq/.gitignore`.
+**Shared** is how the project's work is judged, so everyone's is judged the same way: commit it like any other file. A lesson one person teaches RaisQ is then caught for everyone.
 
-`init` also writes RaisQ's agent skill to `.agents/skills/raisq/SKILL.md`, so you can use RaisQ from your agent's chat. It's written by RaisQ, so don't edit it: `raisq skill` overwrites it. See [Using RaisQ from chat](../guides/chat.md).
+**`local/`** is who runs RaisQ on this machine, and the work in progress. It has its own `.gitignore`, so nothing in it is ever committed, however RaisQ grows. Tasks are personal, like local branches: their runs and `raisq/<task>` branches exist only on your machine. To share a piece of work with your team, put it in your issue tracker or a spec file, which [RaisQ can read](how-it-works.md#specs-from-elsewhere).
 
-## raisq.yaml
+`init` also writes RaisQ's agent skill to `.agents/skills/raisq/SKILL.md`, so you can use RaisQ from your agent's chat. Commit it too, so your teammates' agents find it. It's written by RaisQ, so don't edit it: `raisq skill` overwrites it. See [Using RaisQ from chat](../guides/chat.md).
+
+**Joining a project that uses RaisQ:** after cloning it, run `raisq init`. It sets up only your machine: it finds the agent and container tool you have, writes `local/config.yaml`, and leaves the shared files alone. Until then, every command says to run it.
+
+**A project set up before `local/` existed** is moved on the first command: `raisq.yaml` becomes `local/config.yaml`, and tasks, fact history, baselines and the batch report move into `local/`. RaisQ says what it moved. Commit the removals git then shows under `.raisq/`.
+
+## local/config.yaml
+
+This machine's settings. Change them with [`raisq config`](#changing-the-setup); each person has their own.
 
 ```yaml
-preset: web
 builder: claude-code
 critic: claude-code-critic
 isolation: docker
@@ -28,7 +39,6 @@ Each line names a plugin for a slot that takes exactly one, because a choice has
 
 | Key | What | Notes |
 |---|---|---|
-| `preset` | The kind of project `init` found, which picked the starting plugins and rubrics | `web` adds website rubrics, and, when there's a `start` script, page text, contact-detail and link checks. `library-go` adds the public API check. A list when a project is more than one kind. After `init`, the files are what count. |
 | `builder` | The plugin that builds | A file in `plugins/` with `slot: builder` |
 | `critic` | The plugin that judges, and does every other AI job with no tools | A file with `slot: model`. Any model works. If it's the builder's vendor or model, every review pack says so. |
 | `isolation` | Where attempts run | `docker`, `podman`, or `none` for a disposable machine |
@@ -64,7 +74,7 @@ What the commands take care of:
 - **A change that removes a safeguard asks first.** `raisq config isolation none` explains what it means and asks you to confirm. Without a terminal, such as from your agent's chat, it needs `--yes`.
 - **Nothing a run depends on can be removed.** `raisq plugin remove` refuses the builder, the critic, the isolation in use, and a provider a check still needs. Removing a [lesson](../guides/tasks.md#learning-from-mistakes) check says which task it came from, and that its mistake won't be checked any more.
 - **A running task isn't affected.** It keeps the settings it started with, and a change applies from the next run.
-- **Your comments in `raisq.yaml` are kept.**
+- **Your comments in `local/config.yaml` are kept.**
 
 You can still edit any file by hand when you know what you're changing, for example a check's command in its plugin file. For facts, prefer `raisq fact`: it sends back the ready tasks that relied on a fact that changed, which an edit by hand doesn't. Marking such a task done is still refused, because its result no longer matches the facts.
 
@@ -102,7 +112,7 @@ What's true about your project, one file per topic. RaisQ reads every `.yaml` un
 | `text` | The fact. What the agent is told and what the critic quotes. |
 | `tag` | *confirmed* (a person said so), *inferred* (a guess, or a draft nobody checked) or *gap* (known to be unknown) |
 | `kind` | `contact`, `hours`, `price`, `terms` or `rule`. Sets how often it must be reconfirmed. |
-| `said_by`, `said_on` | Who said it, and when |
+| `said_by`, `said_on` | Who said it, and when. A fact you give is recorded with your name from `git config user.name`, so a teammate reading it knows who said so. |
 | `needs: stakeholder` | Someone else, such as a client, must confirm it. It stays inferred until `raisq fact confirm <id> --by "<who>"` records who did. |
 | `recheck` | Override how often it must be reconfirmed, such as `90d` or `12w` |
 | `see` | Another fact's id, so a fact shown in two places is written once |
@@ -113,7 +123,9 @@ What's true about your project, one file per topic. RaisQ reads every `.yaml` un
 
 **Rules are facts too.** "All copy in British English", "use the design system's components", "don't refactor what the task didn't ask for": constraints the output must respect go here with `kind: rule`, and the critic judges them.
 
-**Nothing is overwritten.** Every change is a new version, and the old one is kept so a run can read the version it started on.
+**Nothing is lost.** Git keeps every version of a fact, with who changed it and when. Each run also takes a snapshot of the facts in `local/snapshots/`, so what it's judged against can't change under it.
+
+**When a teammate changes a fact you relied on,** you get the change with `git pull`. A ready task that relied on the old version can't be marked done, because its result no longer matches the facts: send it back to rebuild it.
 
 Use `raisq fact` rather than editing by hand, so a change finds the tasks that relied on it:
 
@@ -127,12 +139,12 @@ raisq fact list --due
 
 A project may have no facts at all. A library has no phone number; the critic then checks criteria and rubrics only.
 
-## tasks/
+## local/tasks/
 
 One folder per task, written by `raisq task`:
 
 ```
-tasks/order-page/
+local/tasks/order-page/
   spec.yaml       its acceptance criteria
   state.yaml      queued, running, ready, parked or done, and why
   runs/           every run: what it was judged against, each attempt's prompt, result, checks, verdicts and handoff
@@ -141,7 +153,7 @@ tasks/order-page/
 ```
 
 ```yaml
-# .raisq/tasks/order-page/spec.yaml
+# .raisq/local/tasks/order-page/spec.yaml
 name: order-page
 title: Add a cake order page
 criteria:

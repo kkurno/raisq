@@ -83,7 +83,7 @@ go install github.com/kkurno/raisq/cmd/raisq@latest
 raisq init
 ```
 
-`raisq init` finds your tests and your agent, and asks a few questions about your project.
+`raisq init` finds your tests and your agent, and asks a few questions about your project. Commit the `.raisq/` folder it creates: it's how your project's work is judged, shared with your team. Your own settings and tasks stay in `.raisq/local/`, which git ignores, and a teammate who clones the project runs `raisq init` once for their machine.
 
 ### Your first task
 

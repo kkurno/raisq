@@ -16,7 +16,7 @@ Tips:
 - **Keep it small.** One page or one feature per task. A task with too many criteria is offered a split into smaller parts automatically.
 - **Answer the questions.** When RaisQ asks something, it's because the agent would otherwise have to guess.
 
-To see or change a task's criteria, open `.raisq/tasks/<task>/spec.yaml`.
+To see or change a task's criteria, open `.raisq/local/tasks/<task>/spec.yaml`. Tasks are yours: they live in `.raisq/local/`, which isn't committed, like your local branches. To share a piece of work with your team, put it in your issue tracker or a spec file, and use `raisq task --from` or `--spec` below.
 
 ### From a spec file or an issue
 

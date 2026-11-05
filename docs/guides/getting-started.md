@@ -56,7 +56,7 @@ RaisQ looks at your project and tells you what it found:
 
 Type `y`. If something isn't what you want, such as the builder, accept it anyway and [change it afterwards](#changing-what-init-chose): typing `n` writes nothing at all. RaisQ then asks a few questions about your project, such as its name and phone number. These become **facts**, which is how RaisQ catches an agent making things up. Press Enter to skip one you don't know.
 
-RaisQ creates a `.raisq/` folder in your project. Commit it like any other file.
+RaisQ creates a `.raisq/` folder in your project. Commit it: the facts, checks and rubrics in it are how your project's work is judged, for everyone on the team. `.raisq/local/` inside it is yours alone, with your settings and tasks, and git ignores it. A teammate who clones the project runs `raisq init` once to set up their own machine.
 
 Run `raisq doctor` to make sure everything is ready:
 

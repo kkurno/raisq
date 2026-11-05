@@ -27,7 +27,7 @@ Both build, test and review each task the same way. The only difference is what 
 4. **Stops cleanly.**
    - **When its time limit is up** (8 hours by default), it stops starting new tasks, and lets the one that's running finish.
    - **When your AI account hits its usage limit, or you press Ctrl-C,** it stops right away, and the task it was working on goes back to the queue, so nothing is lost.
-5. **Ends with a report** of what's ready and what's parked. It's printed, saved in `.raisq/batch-report.md`, and sent to any [report plugin](../reference/plugins.md#report) you've set up.
+5. **Ends with a report** of what's ready and what's parked. It's printed, saved in `.raisq/local/batch-report.md`, and sent to any [report plugin](../reference/plugins.md#report) you've set up.
 
 There's one more reason a batch stops: if ⚙️ RaisQ finds the builder AI touched something it shouldn't have, such as a git hook, it stops the whole batch, because that means the setup isn't safe.
 
@@ -75,9 +75,9 @@ The limit is when the batch stops *starting* tasks. A task that's already runnin
 
 ## Running a batch on a schedule
 
-A batch is one command, so anything that can run a command on a schedule can run it: `cron`, a CI job, or a machine you leave on overnight.
+A batch is one command, so `cron` or any scheduler can start it, on a machine that keeps its state between runs, such as one you leave on overnight. Its tasks, runs and `raisq/<task>` branches live on that machine, and RaisQ never pushes them, so a throwaway CI job would lose the work when it ends.
 
-On a machine that only exists to run batches, such as a CI runner, `raisq config isolation none --yes` skips Docker. Only do this on a machine you're happy to throw away, because the builder AI then runs directly on it. Every review pack says when this was the case.
+On a machine that only exists to run batches, `raisq config isolation none --yes` skips Docker. Only do this on a machine you're happy to throw away, because the builder AI then runs directly on it. Every review pack says when this was the case.
 
 ## Tips
 

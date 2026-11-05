@@ -17,7 +17,7 @@ import (
 	"github.com/kkurno/raisq/plugin/store"
 )
 
-// Setting is one line of raisq.yaml as raisq config shows it.
+// Setting is one of this machine's settings, as raisq config shows it.
 type Setting struct {
 	Key, Value string
 	Default    bool
@@ -46,9 +46,6 @@ func (p *Project) Settings() []Setting {
 		spot,
 		def("keep_artifacts", c.KeepArtifacts, "30d"),
 	}
-	if c.Preset != nil {
-		out = append(out, Setting{"preset", fmt.Sprint(c.Preset), false})
-	}
 	return out
 }
 
@@ -59,8 +56,8 @@ type ErrConfirm struct{ Warning string }
 
 func (e ErrConfirm) Error() string { return e.Warning }
 
-// Set checks a value and saves it to raisq.yaml, leaving the rest of the file,
-// comments included, as it was. confirmed is a person's yes to an ErrConfirm.
+// Set checks a value and saves it to this machine's config, leaving the rest
+// of the file, comments included, as it was. confirmed is a person's yes to an ErrConfirm.
 // The notes say what else changed or what to know.
 func (p *Project) Set(key, value string, confirmed bool) ([]string, error) {
 	key = strings.ReplaceAll(key, "-", "_")
@@ -111,8 +108,6 @@ func (p *Project) Set(key, value string, confirmed bool) ([]string, error) {
 		if d, err := store.ParseDays(value); err != nil || d <= 0 {
 			return nil, fmt.Errorf("keep_artifacts is a number of days or weeks, such as 30d or 4w, not %q", value)
 		}
-	case "preset":
-		return nil, fmt.Errorf("preset records what init found, and changing it changes nothing: add or remove checks with raisq plugin new, add and remove")
 	default:
 		return nil, fmt.Errorf("no setting %q. Settings: %s", key, strings.Join(keys, ", "))
 	}
@@ -143,10 +138,10 @@ func (p *Project) Unset(key string) ([]string, error) {
 	return p.runningNote(), nil
 }
 
-// edit sets key to value in raisq.yaml, or removes it when value is nil, then
-// reloads the config.
+// edit sets key to value in this machine's config, or removes it when value
+// is nil, then reloads the config.
 func (p *Project) edit(key string, value any) error {
-	path := filepath.Join(p.Raisq, "raisq.yaml")
+	path := ConfigPath(p.Raisq)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -191,7 +186,7 @@ func (p *Project) edit(key string, value any) error {
 	if err := yaml.Unmarshal(out, &cfg); err != nil {
 		return err
 	}
-	// A half-written raisq.yaml would stop every command, so swap it in whole.
+	// A half-written config would stop every command, so swap it in whole.
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, out, 0o644); err != nil {
 		return err

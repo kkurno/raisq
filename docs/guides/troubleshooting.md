@@ -14,7 +14,7 @@ It checks your setup and says what's wrong. Most problems are one of these.
 
 Docker isn't started. Open Docker Desktop, or run `sudo systemctl start docker` on Linux, then try again.
 
-RaisQ needs Docker or Podman for everything, including checking a change you made yourself, because the checks run in the container too. To use Podman: `raisq config isolation podman`. On a machine you're happy to throw away, such as a CI runner, `raisq config isolation none` runs everything directly on it instead.
+RaisQ needs Docker or Podman for everything, including checking a change you made yourself, because the checks run in the container too. To use Podman: `raisq config isolation podman`. On a machine you're happy to throw away, `raisq config isolation none` runs everything directly on it instead.
 
 **"not logged in on this machine"**
 
@@ -26,9 +26,13 @@ On a Mac, the first run may ask you to allow access to the Keychain. Choose **Al
 
 A plugin uses a tool that isn't installed on your computer. The message says how to install it.
 
-**"no .raisq/raisq.yaml here"**
+**"no .raisq/ here"**
 
 You're not in a RaisQ project. Go to your project's folder, or run `raisq init` there.
+
+**"this machine isn't set up for it"**
+
+The project uses RaisQ, but your machine has no settings yet, such as right after cloning it. Run `raisq init`: it sets up only your machine and leaves the project's shared files alone.
 
 ## Running
 
@@ -48,7 +52,7 @@ The agent tried and couldn't get it right. Read the review pack to see what kept
 raisq review <task>
 ```
 
-Usually the task needs to be clearer, or it needs something the agent doesn't have. Change the task's criteria in `.raisq/tasks/<task>/spec.yaml`, then:
+Usually the task needs to be clearer, or it needs something the agent doesn't have. Change the task's criteria in `.raisq/local/tasks/<task>/spec.yaml`, then:
 
 ```
 raisq review <task> --send-back "what to do differently"
@@ -80,6 +84,6 @@ raisq learn <task> "what was wrong"
 
 ## Still stuck?
 
-Every attempt is saved in `.raisq/tasks/<task>/runs/`, including the exact prompt the agent got, what it reported, what the tests printed and what the critic said. That usually shows what went wrong.
+Every attempt is saved in `.raisq/local/tasks/<task>/runs/`, including the exact prompt the agent got, what it reported, what the tests printed and what the critic said. That usually shows what went wrong.
 
 If you think it's a bug, [open an issue](https://github.com/kkurno/raisq/issues) with what you ran, what you expected, and the output of `raisq version` and `raisq doctor`.

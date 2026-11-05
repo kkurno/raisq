@@ -85,7 +85,7 @@ A breaking change gets `!` after the type or scope, and a `BREAKING CHANGE:` foo
 ```
 feat(config)!: rename critic_model to critic
 
-BREAKING CHANGE: rename `critic_model:` to `critic:` in .raisq/raisq.yaml.
+BREAKING CHANGE: rename `critic_model:` to `critic:` in .raisq/local/config.yaml.
 ```
 
 A breaking change to a file format in `.raisq/` always needs that footer, so the release notes tell users what to change.
@@ -96,7 +96,7 @@ Please include:
 
 - what you ran, and what you expected
 - `raisq version` and `raisq doctor`
-- the run folder from `.raisq/tasks/<task>/runs/`, if it's about a run. Check it first: it holds the prompt, the agent's output and the critic's answers.
+- the run folder from `.raisq/local/tasks/<task>/runs/`, if it's about a run. Check it first: it holds the prompt, the agent's output and the critic's answers.
 
 Security issues go through [SECURITY.md](SECURITY.md), not a public issue.
 

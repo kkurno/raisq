@@ -78,7 +78,7 @@ func cmdFact(ctx context.Context, args []string) error {
 		fs := flags("fact " + args[0])
 		kind := fs.String("kind", "", "contact, hours, price, terms or rule")
 		topic := fs.String("topic", "", "file it goes in; default: the part of the id before /")
-		by := fs.String("by", "you", "who said it")
+		by := fs.String("by", "", "who said it; default: your name from git config user.name")
 		stakeholder := fs.Bool("needs-stakeholder", false, "only the stakeholder can confirm this; keep it inferred")
 		gap := fs.Bool("gap", false, "known to be unknown: the agent is told to leave it out")
 		pos, err := parse(fs, args[1:])
@@ -107,7 +107,13 @@ func cmdFact(ctx context.Context, args []string) error {
 				f.Kind = *kind
 			}
 		}
-		f.Tag, f.SaidBy, f.SaidOn, f.Needs = domain.Confirmed, *by, time.Now().Format("2006-01-02"), ""
+		who := *by
+		if who == "" {
+			if who = proj.Person(); who == "" {
+				who = "you"
+			}
+		}
+		f.Tag, f.SaidBy, f.SaidOn, f.Needs = domain.Confirmed, who, time.Now().Format("2006-01-02"), ""
 		switch {
 		case *gap && args[0] == "add":
 			f.Tag, f.Text = domain.Gap, ""
@@ -339,7 +345,7 @@ func cmdSlots() error {
 		{"spec-source", "the one that matches · turns an issue id into a task"},
 		{"report", "all · delivers review packs and batch reports"},
 		{"checkout", "built in · git"},
-		{"store", "built in · files in .raisq/"},
+		{"store", "built in · files in .raisq/, this machine's in .raisq/local/"},
 	} {
 		fmt.Printf("  %-12s %s\n", s[0], s[1])
 	}
@@ -538,7 +544,7 @@ func unique(xs []string) []string {
 	return out
 }
 
-// cmdConfig shows raisq.yaml's settings, or checks and saves one.
+// cmdConfig shows this machine's settings, or checks and saves one.
 func cmdConfig(args []string) error {
 	fs := flags("config")
 	unset := fs.Bool("unset", false, "put a setting back to its default")

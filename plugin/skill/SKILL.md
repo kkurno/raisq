@@ -58,7 +58,7 @@ RaisQ needs the user when `raisq task` prints questions (lines starting with `?`
 
 ## Long runs
 
-`raisq run` can take many minutes, and `raisq batch` can take hours, which is longer than you can wait for a command. Start them in the background if you can, and tell the user which task, or that a batch, has started. When it finishes, run `raisq status` and say what happened. After a batch, `.raisq/batch-report.md` lists what's ready and what's parked. If you can't run commands in the background, ask the user to run the command in a terminal.
+`raisq run` can take many minutes, and `raisq batch` can take hours, which is longer than you can wait for a command. Start them in the background if you can, and tell the user which task, or that a batch, has started. When it finishes, run `raisq status` and say what happened. After a batch, `.raisq/local/batch-report.md` lists what's ready and what's parked. If you can't run commands in the background, ask the user to run the command in a terminal.
 
 ## Reporting back
 

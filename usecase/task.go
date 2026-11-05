@@ -191,6 +191,7 @@ func settle(ctx context.Context, d Deps, request string, spec *domain.TaskSpec, 
 		spec.Criteria = s.Criteria
 	}
 	today := d.now().Format("2006-01-02")
+	who := d.person()
 	for _, nf := range s.Facts {
 		if nf.Contradicts != "" {
 			old, _ := facts.Get(nf.Contradicts)
@@ -208,9 +209,9 @@ func settle(ctx context.Context, d Deps, request string, spec *domain.TaskSpec, 
 			}
 			nf.ID = nf.Contradicts
 		}
-		f := domain.Fact{ID: nf.ID, Text: nf.Text, Kind: nf.Kind, Tag: domain.Confirmed, SaidBy: "you", SaidOn: today}
+		f := domain.Fact{ID: nf.ID, Text: nf.Text, Kind: nf.Kind, Tag: domain.Confirmed, SaidBy: who, SaidOn: today}
 		if nf.Stakeholder {
-			f.Tag, f.Needs, f.SaidBy = domain.Inferred, "stakeholder", "you, for the stakeholder"
+			f.Tag, f.Needs, f.SaidBy = domain.Inferred, "stakeholder", who+", for the stakeholder"
 		}
 		if err := d.Store.SaveFact(f, nf.Topic); err != nil {
 			return err

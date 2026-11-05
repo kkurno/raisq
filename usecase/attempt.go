@@ -45,14 +45,25 @@ type Deps struct {
 	// Notices go at the top of every review pack: no isolation, or a critic
 	// from the same vendor or model as the builder.
 	Notices []string
-	Now     func() time.Time
-	Log     func(format string, args ...any)
+	// Person is who's using RaisQ here, recorded on the facts they give, so a
+	// teammate reading them knows who said so.
+	Person string
+	Now    func() time.Time
+	Log    func(format string, args ...any)
 }
 
 func (d Deps) log(format string, args ...any) {
 	if d.Log != nil {
 		d.Log(format, args...)
 	}
+}
+
+// person is who to record on a fact; "you" only when nothing better is known.
+func (d Deps) person() string {
+	if d.Person != "" {
+		return d.Person
+	}
+	return "you"
 }
 
 func (d Deps) now() time.Time {
@@ -288,7 +299,7 @@ func askNow(ctx context.Context, d Deps, task string, spec *domain.TaskSpec, fac
 	if r.Status == domain.ResultNeedsSomething {
 		d.log("The builder needs: %s", r.Needs)
 		d.log("Nothing is allowed automatically.")
-		a, err := d.Ask.Ask(fmt.Sprintf("Write a provider for it, in .raisq/plugins/ or, to allow it for this task only, .raisq/tasks/%s/plugins/. Then answer done, or deny.", task))
+		a, err := d.Ask.Ask(fmt.Sprintf("Write a provider for it, in .raisq/plugins/ or, to allow it for this task only, .raisq/local/tasks/%s/plugins/. Then answer done, or deny.", task))
 		if err != nil {
 			return false, err
 		}

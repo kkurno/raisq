@@ -1,4 +1,5 @@
-// Package store keeps .raisq/ as plain files.
+// Package store keeps .raisq/ as plain files: what the project shares at the
+// top, and this machine's working state in local/, which git ignores.
 package store
 
 import (
@@ -21,10 +22,13 @@ import (
 )
 
 type Files struct {
-	root string // the .raisq directory
+	root string // the .raisq directory, committed and shared
 	// periods come from the preset; RaisQ ships the defaults.
 	periods map[string]time.Duration
 }
+
+// Local is the folder under .raisq for this machine's working state.
+const Local = "local"
 
 var DefaultPeriods = map[string]time.Duration{
 	"contact": 180 * day,
@@ -42,6 +46,12 @@ func New(root string) *Files {
 func (s *Files) Root() string                      { return s.root }
 func (s *Files) Periods() map[string]time.Duration { return s.periods }
 func (s *Files) path(p ...string) string           { return filepath.Join(append([]string{s.root}, p...)...) }
+
+// local is a path in this machine's working state.
+func (s *Files) local(p ...string) string { return s.path(append([]string{Local}, p...)...) }
+
+// LocalDir is this machine's working state: tasks, snapshots, baselines.
+func (s *Files) LocalDir() string { return s.local() }
 
 // --- facts ---
 
@@ -146,7 +156,7 @@ func (s *Files) PinFacts() (domain.Facts, error) {
 		return facts, err
 	}
 	rev := hashFiles(files)
-	dir := s.path("history", "facts", rev)
+	dir := s.local("snapshots", "facts", rev)
 	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
 		for name, data := range files {
 			if err := writeFile(filepath.Join(dir, name), data); err != nil {
@@ -164,7 +174,7 @@ func (s *Files) PinFacts() (domain.Facts, error) {
 }
 
 func (s *Files) FactsAt(rev string) (domain.Facts, error) {
-	dir := s.path("history", "facts", rev)
+	dir := s.local("snapshots", "facts", rev)
 	if _, err := os.Stat(dir); err != nil {
 		return domain.Facts{}, fmt.Errorf("facts revision %s not found", rev)
 	}
@@ -255,7 +265,7 @@ func (s *Files) SaveRubric(r domain.Rubric, file string) error {
 // --- tasks ---
 
 func (s *Files) Tasks() ([]string, error) {
-	entries, err := os.ReadDir(s.path("tasks"))
+	entries, err := os.ReadDir(s.local("tasks"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -270,7 +280,7 @@ func (s *Files) Tasks() ([]string, error) {
 
 func (s *Files) LoadSpec(task string) (domain.TaskSpec, error) {
 	var spec domain.TaskSpec
-	if err := readYAML(s.path("tasks", task, "spec.yaml"), &spec); err != nil {
+	if err := readYAML(s.local("tasks", task, "spec.yaml"), &spec); err != nil {
 		return spec, err
 	}
 	return spec, spec.Validate()
@@ -280,16 +290,16 @@ func (s *Files) SaveSpec(spec domain.TaskSpec) error {
 	if err := spec.Validate(); err != nil {
 		return err
 	}
-	return writeYAML(s.path("tasks", spec.Name, "spec.yaml"), spec)
+	return writeYAML(s.local("tasks", spec.Name, "spec.yaml"), spec)
 }
 
 func (s *Files) PinSpec(task string) (string, error) {
-	data, err := os.ReadFile(s.path("tasks", task, "spec.yaml"))
+	data, err := os.ReadFile(s.local("tasks", task, "spec.yaml"))
 	if err != nil {
 		return "", err
 	}
 	rev := hashFiles(map[string][]byte{"spec.yaml": data})
-	p := s.path("tasks", task, "history", rev+".yaml")
+	p := s.local("tasks", task, "history", rev+".yaml")
 	if _, err := os.Stat(p); errors.Is(err, fs.ErrNotExist) {
 		if err := writeFile(p, data); err != nil {
 			return "", err
@@ -300,18 +310,18 @@ func (s *Files) PinSpec(task string) (string, error) {
 
 func (s *Files) SpecAt(task, rev string) (domain.TaskSpec, error) {
 	var spec domain.TaskSpec
-	err := readYAML(s.path("tasks", task, "history", rev+".yaml"), &spec)
+	err := readYAML(s.local("tasks", task, "history", rev+".yaml"), &spec)
 	return spec, err
 }
 
 func (s *Files) LoadState(task string) (domain.TaskState, error) {
 	var st domain.TaskState
-	err := readYAML(s.path("tasks", task, "state.yaml"), &st)
+	err := readYAML(s.local("tasks", task, "state.yaml"), &st)
 	return st, err
 }
 
 func (s *Files) SaveState(task string, st domain.TaskState) error {
-	return writeYAML(s.path("tasks", task, "state.yaml"), st)
+	return writeYAML(s.local("tasks", task, "state.yaml"), st)
 }
 
 // --- runs ---
@@ -328,7 +338,7 @@ func (s *Files) NewRun(task string) (string, error) {
 	return name, os.MkdirAll(s.RunDir(task, name), 0o755)
 }
 
-func (s *Files) RunDir(task, run string) string { return s.path("tasks", task, "runs", run) }
+func (s *Files) RunDir(task, run string) string { return s.local("tasks", task, "runs", run) }
 
 // SaveRunFile writes JSON for .json names, and raw text for anything else.
 func (s *Files) SaveRunFile(task, run, name string, data any) error {
@@ -359,7 +369,7 @@ func (s *Files) LoadRunFile(task, run, name string, into any) error {
 
 func (s *Files) Baseline(commit string) (domain.Baseline, bool, error) {
 	var b domain.Baseline
-	data, err := os.ReadFile(s.path("baselines", commit+".json"))
+	data, err := os.ReadFile(s.local("baselines", commit+".json"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return b, false, nil
 	}
@@ -374,12 +384,12 @@ func (s *Files) SaveBaseline(b domain.Baseline) error {
 	if err != nil {
 		return err
 	}
-	return writeFile(s.path("baselines", b.Commit+".json"), data)
+	return writeFile(s.local("baselines", b.Commit+".json"), data)
 }
 
 func (s *Files) Snapshot(commit, extractor string) (map[string]string, bool, error) {
 	var m map[string]string
-	data, err := os.ReadFile(s.path("baselines", commit+"."+extractor+".json"))
+	data, err := os.ReadFile(s.local("baselines", commit+"."+extractor+".json"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
@@ -394,7 +404,7 @@ func (s *Files) SaveSnapshot(commit, extractor string, pages map[string]string) 
 	if err != nil {
 		return err
 	}
-	return writeFile(s.path("baselines", commit+"."+extractor+".json"), data)
+	return writeFile(s.local("baselines", commit+"."+extractor+".json"), data)
 }
 
 // --- helpers ---

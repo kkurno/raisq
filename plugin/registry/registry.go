@@ -1,8 +1,9 @@
-// Package registry turns .raisq/ into the plugins a flow uses, by the rule in
-// 6.2: one-of slots by raisq.yaml, the rest by every file with that slot.
+// Package registry turns .raisq/ into the plugins a flow uses: one-of slots
+// by this machine's config, the rest by every file with that slot.
 package registry
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,8 +25,10 @@ import (
 	"github.com/kkurno/raisq/usecase"
 )
 
-// Config is raisq.yaml: one-of slot choices, and defaults a project overrides.
+// Config is this machine's settings, in .raisq/local/config.yaml: which agent
+// and container tool to use here, and defaults to override.
 type Config struct {
+	// Preset is read only so an old raisq.yaml still loads; nothing uses it.
 	Preset    any    `yaml:"preset,omitempty"`
 	Builder   string `yaml:"builder"`
 	Critic    string `yaml:"critic"`
@@ -40,8 +43,10 @@ type Config struct {
 }
 
 type Project struct {
-	Dir     string
-	Raisq   string
+	Dir   string
+	Raisq string
+	// Moved is what Open moved from the layout before local/, to say once.
+	Moved   []string
 	Config  Config
 	Files   []command.File
 	Store   *store.Files
@@ -49,22 +54,33 @@ type Project struct {
 	WorkDir string
 }
 
+// ErrNoMachine means the project is set up, but this machine isn't yet, such
+// as right after cloning it.
+var ErrNoMachine = fmt.Errorf("this project uses RaisQ, but this machine isn't set up for it: run `raisq init`")
+
 func Open(dir string) (*Project, error) {
 	raisq := filepath.Join(dir, ".raisq")
-	data, err := os.ReadFile(filepath.Join(raisq, "raisq.yaml"))
+	if _, err := os.Stat(raisq); err != nil {
+		return nil, fmt.Errorf("no .raisq/ here: run `raisq init` in your project's folder")
+	}
+	moved, err := store.Migrate(raisq)
 	if err != nil {
-		return nil, fmt.Errorf("no .raisq/raisq.yaml here: run `raisq init` first")
+		return nil, err
+	}
+	data, err := os.ReadFile(ConfigPath(raisq))
+	if err != nil {
+		return nil, ErrNoMachine
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("raisq.yaml: %w", err)
+		return nil, fmt.Errorf("%s: %w", ConfigPath(raisq), err)
 	}
 	files, err := command.Load(filepath.Join(raisq, "plugins"))
 	if err != nil {
 		return nil, err
 	}
 	work := filepath.Join(os.TempDir(), "raisq-work", filepath.Base(dir)+"-"+shortHash(dir))
-	p := &Project{Dir: dir, Raisq: raisq, Config: cfg, Files: files, Store: store.New(raisq), WorkDir: work}
+	p := &Project{Dir: dir, Raisq: raisq, Moved: moved, Config: cfg, Files: files, Store: store.New(raisq), WorkDir: work}
 	var private []string
 	for _, s := range p.SkillFolders() {
 		private = append(private, skill.Dir(s))
@@ -111,6 +127,16 @@ func (p *Project) SkillFolders() []string {
 	return out
 }
 
+// Person is the name to record on facts given here: git's user.name.
+func (p *Project) Person() string {
+	return p.Git.Person(context.Background())
+}
+
+// ConfigPath is this machine's settings file for a .raisq folder.
+func ConfigPath(raisq string) string {
+	return filepath.Join(raisq, store.Local, store.ConfigFile)
+}
+
 func shortHash(s string) string {
 	var h uint32 = 2166136261
 	for i := 0; i < len(s); i++ {
@@ -142,7 +168,7 @@ func (p *Project) all(slotName string) []command.File {
 func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 	files := p.Files
 	if task != "" {
-		extra, err := command.Load(filepath.Join(p.Raisq, "tasks", task, "plugins"))
+		extra, err := command.Load(filepath.Join(p.Store.LocalDir(), "tasks", task, "plugins"))
 		if err != nil {
 			return usecase.Deps{}, err
 		}
@@ -152,11 +178,12 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 	p.Files = files
 	defer func() { p.Files = saved }()
 
-	d := usecase.Deps{Store: p.Store, Checkout: p.Git, Manual: manual, Attempts: p.Config.Attempts, SplitOver: p.Config.SplitOver}
+	d := usecase.Deps{Store: p.Store, Checkout: p.Git, Manual: manual, Attempts: p.Config.Attempts, SplitOver: p.Config.SplitOver,
+		Person: p.Person()}
 
 	critic, ok := p.find("model", p.Config.Critic)
 	if !ok {
-		return d, fmt.Errorf("raisq.yaml names critic %q, and there's no plugin file with slot: model and that name", p.Config.Critic)
+		return d, fmt.Errorf("the critic is %q, and there's no plugin file with slot: model and that name. Choose one with raisq config critic <plugin>", p.Config.Critic)
 	}
 	d.Model = command.Model{F: critic}
 
@@ -164,7 +191,7 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 	if !manual {
 		builderFile, ok = p.find("builder", p.Config.Builder)
 		if !ok {
-			return d, fmt.Errorf("raisq.yaml names builder %q, and there's no plugin file with slot: builder and that name", p.Config.Builder)
+			return d, fmt.Errorf("the builder is %q, and there's no plugin file with slot: builder and that name. Choose one with raisq config builder <plugin>", p.Config.Builder)
 		}
 		a := agent.Agent{PluginName: builderFile.Name, Run: builderFile.Run, Install: builderFile.Install}
 		if builderFile.Tool != nil {
@@ -216,7 +243,7 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 			d.Extractors = append(d.Extractors, command.Extractor{F: f})
 		}
 	}
-	d.Reports = []slot.Report{builtin.Markdown{Root: p.Raisq}}
+	d.Reports = []slot.Report{builtin.Markdown{Root: p.Store.LocalDir()}}
 	for _, f := range p.all("report") {
 		d.Reports = append(d.Reports, command.Report{F: f, Project: p.Dir})
 	}
@@ -279,7 +306,7 @@ func (p *Project) SpotShare() float64 {
 	return 0.2
 }
 
-// BatchLimit is the batch time limit from raisq.yaml, 8 hours by default.
+// BatchLimit is the batch time limit, 8 hours by default.
 func (p *Project) BatchLimit() time.Duration {
 	if d, err := time.ParseDuration(p.Config.Batch); err == nil && d > 0 {
 		return d

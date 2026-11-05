@@ -14,9 +14,7 @@ func TestSkillFoldersArePrivate(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".raisq", "plugins"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".raisq", "raisq.yaml"), []byte("builder: cursor\ncritic: cursor-critic\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	writeConfig(t, dir, "builder: cursor\ncritic: cursor-critic\n")
 	p, err := Open(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -37,15 +35,24 @@ func TestSkillFoldersArePrivate(t *testing.T) {
 	}
 }
 
+func writeConfig(t *testing.T, dir, body string) {
+	t.Helper()
+	p := ConfigPath(filepath.Join(dir, ".raisq"))
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func newProject(t *testing.T, yaml string, plugins map[string]string) *Project {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, ".raisq", "plugins"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".raisq", "raisq.yaml"), []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	writeConfig(t, dir, yaml)
 	for name, body := range plugins {
 		if err := os.WriteFile(filepath.Join(dir, ".raisq", "plugins", name+".yaml"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
@@ -82,7 +89,7 @@ func TestSetBuilderBringsInTheBuiltInFile(t *testing.T) {
 	if _, ok := q.find("builder", "cursor"); !ok {
 		t.Fatal("cursor's plugin file should be in the project")
 	}
-	data, _ := os.ReadFile(filepath.Join(p.Raisq, "raisq.yaml"))
+	data, _ := os.ReadFile(ConfigPath(p.Raisq))
 	if !strings.Contains(string(data), "# mine") || !strings.Contains(string(data), "# who builds") {
 		t.Fatalf("a person's comments must survive: %s", data)
 	}
@@ -103,7 +110,7 @@ func TestSetRefusesWhatWouldBreakARun(t *testing.T) {
 		"claude-code":        "name: claude-code\nslot: builder\nrun: x\n",
 		"claude-code-critic": "name: claude-code-critic\nslot: model\nrun: x\n",
 	})
-	before, _ := os.ReadFile(filepath.Join(p.Raisq, "raisq.yaml"))
+	before, _ := os.ReadFile(ConfigPath(p.Raisq))
 	for _, c := range [][2]string{
 		{"critic", "claude-code"}, // a builder can't be the critic
 		{"builder", "nope"},
@@ -112,7 +119,6 @@ func TestSetRefusesWhatWouldBreakARun(t *testing.T) {
 		{"keep_artifacts", "30"},
 		{"spot_check", "2"},
 		{"isolation", "vm"},
-		{"preset", "web"},
 		{"colour", "red"},
 	} {
 		if _, err := p.Set(c[0], c[1], false); err == nil {
@@ -122,7 +128,7 @@ func TestSetRefusesWhatWouldBreakARun(t *testing.T) {
 	if _, err := p.Set("isolation", "none", false); err == nil {
 		t.Error("isolation none needs a person's yes")
 	}
-	if after, _ := os.ReadFile(filepath.Join(p.Raisq, "raisq.yaml")); string(after) != string(before) {
+	if after, _ := os.ReadFile(ConfigPath(p.Raisq)); string(after) != string(before) {
 		t.Fatalf("a refused change must leave raisq.yaml as it was:\n%s", after)
 	}
 	if _, err := p.Unset("builder"); err == nil {
@@ -161,5 +167,65 @@ func TestRemovePluginKeepsWhatARunNeeds(t *testing.T) {
 	}
 	if _, _, err := p.RemovePlugin("site"); err != nil {
 		t.Fatal("once nothing needs it, a provider can go:", err)
+	}
+}
+
+// A project set up before local/ moves this machine's state there on first
+// open, keeping a person's own .gitignore lines and losing nothing.
+func TestOldLayoutMovesToLocal(t *testing.T) {
+	dir := t.TempDir()
+	raisq := filepath.Join(dir, ".raisq")
+	for p, body := range map[string]string{
+		"raisq.yaml":                 "builder: claude-code # mine\ncritic: cursor-critic\n",
+		"tasks/t1/state.yaml":        "state: ready\nadded: x\n",
+		"tasks/t1/spec.yaml":         "name: t1\ntitle: T\ncriteria: [{id: c1, text: x}]\n",
+		"history/facts/abc/b.yaml":   "[]\n",
+		"baselines/c.json":           "{}",
+		"batch-report.md":            "# report\n",
+		".gitignore":                 "tasks/*/runs/\ntasks/*/history/\nhistory/\nbaselines/\nmy-own-line\n",
+		"facts/business.yaml":        "- id: business/name\n  text: Shop\n  tag: confirmed\n",
+		"plugins/cursor-critic.yaml": "name: cursor-critic\nslot: model\nrun: x\n",
+	} {
+		os.MkdirAll(filepath.Dir(filepath.Join(raisq, p)), 0o755)
+		os.WriteFile(filepath.Join(raisq, p), []byte(body), 0o644)
+	}
+	p, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Config.Builder != "claude-code" || len(p.Moved) == 0 {
+		t.Fatalf("settings should load from their new place: %+v moved %v", p.Config, p.Moved)
+	}
+	if st, err := p.Store.LoadState("t1"); err != nil || st.State != "ready" {
+		t.Fatalf("tasks must survive the move: %v %+v", err, st)
+	}
+	for _, gone := range []string{"raisq.yaml", "tasks", "history", "baselines", "batch-report.md"} {
+		if _, err := os.Stat(filepath.Join(raisq, gone)); err == nil {
+			t.Errorf("%s should have moved into local/", gone)
+		}
+	}
+	for _, kept := range []string{"facts/business.yaml", "plugins/cursor-critic.yaml", "local/snapshots/facts/abc/b.yaml", "local/baselines/c.json", "local/batch-report.md"} {
+		if _, err := os.Stat(filepath.Join(raisq, kept)); err != nil {
+			t.Errorf("%s should exist after the move", kept)
+		}
+	}
+	if data, _ := os.ReadFile(filepath.Join(raisq, ".gitignore")); string(data) != "my-own-line\n" {
+		t.Fatalf("only RaisQ's own ignore lines go: %q", data)
+	}
+	if data, _ := os.ReadFile(ConfigPath(raisq)); !strings.Contains(string(data), "# mine") {
+		t.Fatal("the config moves as it was, comments included")
+	}
+	if q := reopen(t, p); len(q.Moved) != 0 {
+		t.Fatal("the move happens once")
+	}
+}
+
+// A teammate who clones a project has its shared files but no settings for
+// their own machine: every command says to run raisq init.
+func TestClonedProjectNeedsThisMachineSetUp(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, ".raisq", "facts"), 0o755)
+	if _, err := Open(dir); err != ErrNoMachine {
+		t.Fatalf("want ErrNoMachine, got %v", err)
 	}
 }

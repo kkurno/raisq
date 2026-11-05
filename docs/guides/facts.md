@@ -44,7 +44,7 @@ Every fact says how you know it:
 | **inferred** | A guess, or something nobody has checked | A claim based on it is shown to you as *unsure* |
 | **gap** | You know you don't know it | The agent is told to leave it out, and a claim about it fails |
 
-`raisq fact add` marks a fact as confirmed by you. If someone else, such as a client, needs to confirm it:
+`raisq fact add` marks a fact as confirmed by you, recorded with your name from `git config user.name`. Facts are committed with the project, so your teammates' tasks are checked against them too. If someone else, such as a client, needs to confirm it:
 
 ```
 raisq fact add orders/minimum "Minimum order 500 baht" --needs-stakeholder

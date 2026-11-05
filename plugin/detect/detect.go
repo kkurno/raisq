@@ -165,6 +165,30 @@ func Detect(dir string) Proposal {
 		p.Notes = append(p.Notes, ".env.test goes to the checks only, after the builder has exited")
 	}
 
+	m := DetectMachine()
+	p.Builder, p.Critic, p.Isolation = m.Builder, m.Critic, m.Isolation
+	p.Found = append(p.Found, m.Found...)
+	p.Notes = append(p.Notes, m.Notes...)
+	for n, body := range m.Files {
+		p.Files[n] = body
+	}
+	if !testsFound(p) {
+		p.Notes = append(p.Notes, "no test command found: add a plugin file with slot: checks")
+	}
+	return p
+}
+
+// Machine is what this machine has: the agents and container tool found on
+// it, and the plugin files for the agents chosen.
+type Machine struct {
+	Builder, Critic, Isolation string
+	Found, Notes               []string
+	Files                      map[string]string
+}
+
+// DetectMachine picks the builder, critic and isolation from what's installed.
+func DetectMachine() Machine {
+	p := Machine{Files: map[string]string{}}
 	// One-of slots. Prefer a critic from another vendor.
 	agents := []string{}
 	for _, a := range []string{"claude-code", "cursor"} {
@@ -200,9 +224,6 @@ func Detect(dir string) Proposal {
 	default:
 		p.Isolation = "docker"
 		p.Notes = append(p.Notes, "no container tool found: nothing can run until Docker or Podman is installed")
-	}
-	if !testsFound(p) {
-		p.Notes = append(p.Notes, "no test command found: add a plugin file with slot: checks")
 	}
 	return p
 }

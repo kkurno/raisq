@@ -263,6 +263,6 @@ raisq plugin add mytool --slot checks # a model drafts it from `mytool --help`, 
 raisq plugin remove my-check          # stop using one
 ```
 
-A plugin for one task only goes in `.raisq/tasks/<task>/plugins/`.
+A plugin for one task only goes in `.raisq/local/tasks/<task>/plugins/`.
 
 A plugin fills its slot and nothing more. It can't skip a step, change a verdict or reorder the attempt, and one that runs your project's code runs inside the container.

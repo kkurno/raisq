@@ -15,7 +15,14 @@ import (
 	"github.com/kkurno/raisq/usecase"
 )
 
-func open() (*registry.Project, error) { return registry.Open(wd()) }
+func open() (*registry.Project, error) {
+	p, err := registry.Open(wd())
+	if err == nil && len(p.Moved) > 0 {
+		logf("Moved this machine's RaisQ state into .raisq/local/, which git ignores: %s.", strings.Join(p.Moved, ", "))
+		logf("Your settings are now in .raisq/local/config.yaml. Commit the removals git shows under .raisq/.")
+	}
+	return p, err
+}
 
 func cmdTask(ctx context.Context, args []string) error {
 	fs := flags("task")
@@ -198,7 +205,7 @@ func next(proj *registry.Project) (string, error) {
 
 func cmdBatch(ctx context.Context, args []string) error {
 	fs := flags("batch")
-	limit := fs.Duration("for", 0, "stop starting new tasks after this long (default from raisq.yaml, else 8h)")
+	limit := fs.Duration("for", 0, "stop starting new tasks after this long (default: raisq config batch, else 8h)")
 	if _, err := parse(fs, args); err != nil {
 		return err
 	}
@@ -264,7 +271,7 @@ func cmdBatch(ctx context.Context, args []string) error {
 			_ = r.Deliver(ctx, slotItem(report))
 		}
 	}
-	return os.WriteFile(proj.Raisq+"/batch-report.md", []byte(report), 0o644)
+	return os.WriteFile(filepath.Join(proj.Store.LocalDir(), "batch-report.md"), []byte(report), 0o644)
 }
 
 func batchReport(ready, parked []string) string {
@@ -333,7 +340,7 @@ func cmdReview(ctx context.Context, args []string) error {
 	case *overrule != "":
 		logf("The lesson still runs until it's retired. To run the task again: raisq review %s --send-back \"why\"", task)
 	default:
-		data, err := os.ReadFile(proj.Raisq + "/tasks/" + task + "/review.md")
+		data, err := os.ReadFile(filepath.Join(proj.Store.LocalDir(), "tasks", task, "review.md"))
 		if err != nil {
 			return fmt.Errorf("no review pack for %s yet", task)
 		}

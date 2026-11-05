@@ -136,7 +136,7 @@ The agent works with its permission prompts off, because nobody is there to appr
 - **Test secrets reach only the checks,** after the agent has exited, through a provider (see [plugins](plugins.md#provides)).
 - **`.raisq/` and RaisQ's agent skill never enter the container.** The agent can't read your rubrics or change what judges it, and it can't change the skill that tells your chat agent how to use RaisQ. They're also left out of every commit and diff the task makes.
 
-`isolation: none` runs everything on the host. It's for a machine that's disposable anyway, such as a CI runner. `raisq config isolation none` warns and asks before setting it, and every review pack says so.
+`isolation: none` runs everything on the host. It's for a machine that's disposable anyway. `raisq config isolation none` warns and asks before setting it, and every review pack says so.
 
 ## Big tasks
 
