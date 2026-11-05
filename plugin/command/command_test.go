@@ -100,6 +100,15 @@ func TestModelUsageLimitIsAStop(t *testing.T) {
 	}
 }
 
+// A plugin file extractor's needs start their providers, as a check's do.
+func TestExtractorNeeds(t *testing.T) {
+	var e slot.Extractor = Extractor{F: File{Name: "pages", Needs: []string{"site"}}}
+	n, ok := e.(slot.Needer)
+	if !ok || len(n.Needs()) != 1 || n.Needs()[0] != "site" {
+		t.Fatal("an extractor's needs must reach the run")
+	}
+}
+
 func write(t *testing.T, dir, name, body string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {

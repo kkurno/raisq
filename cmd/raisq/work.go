@@ -149,7 +149,7 @@ func runOne(ctx context.Context, proj *registry.Project, task string, manual, wa
 		return fresh.Deps(task, manual)
 	}
 	if err := d.Isolation.Available(ctx); err != nil {
-		return fmt.Errorf("%w. Install it, or use `raisq run --check` to build by hand", err)
+		return fmt.Errorf("%w. Install Docker or Podman, or on a machine you can throw away: raisq config isolation none", err)
 	}
 	_, err = usecase.Run(ctx, d, task)
 	if errors.Is(err, usecase.ErrStopped) {

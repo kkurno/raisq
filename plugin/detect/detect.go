@@ -199,7 +199,7 @@ func Detect(dir string) Proposal {
 		p.Found = append(p.Found, "Podman")
 	default:
 		p.Isolation = "docker"
-		p.Notes = append(p.Notes, "no container tool found: only manual mode works until Docker or Podman is installed")
+		p.Notes = append(p.Notes, "no container tool found: nothing can run until Docker or Podman is installed")
 	}
 	if !testsFound(p) {
 		p.Notes = append(p.Notes, "no test command found: add a plugin file with slot: checks")

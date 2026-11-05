@@ -104,7 +104,7 @@ func cmdInit(ctx context.Context, args []string) error {
 		}
 	}
 	// Run history, pinned revisions and baselines are local working state.
-	if err := write(filepath.Join(raisq, ".gitignore"), "tasks/*/runs/\ntasks/*/history/\nhistory/\nbaselines/\n"); err != nil {
+	if err := write(filepath.Join(raisq, ".gitignore"), "tasks/*/runs/\ntasks/*/history/\nhistory/\nbaselines/\nbatch-report.md\n"); err != nil {
 		return err
 	}
 

@@ -56,3 +56,32 @@ func TestIsolation(t *testing.T) {
 		t.Fatal("the user's home must not be inside")
 	}
 }
+
+// A login variable that's set replaces the copied login, so only one
+// credential is ever inside.
+func TestLoginEnvReplacesTheCopiedLogin(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	ctx := context.Background()
+	d := New("alpine:3.20")
+	if err := d.Available(ctx); err != nil {
+		t.Skip(err)
+	}
+	login := t.TempDir()
+	os.WriteFile(filepath.Join(login, "token.json"), []byte(`{"a":1}`), 0o600)
+	d.Login = []loginpkg.Source{{File: filepath.Join(login, "token.json"), To: "/home/raisq/.agent/token.json"}}
+	d.LoginEnv = []string{"RAISQ_TEST_TOKEN"}
+	t.Setenv("RAISQ_TEST_TOKEN", "from-env")
+	s, err := d.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir(), Label: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop(ctx)
+	if r, _ := s.Exec(ctx, "test -e /home/raisq/.agent/token.json", nil); r.Exit == 0 {
+		t.Fatal("with a login variable set, the login file must not be copied in too")
+	}
+	if r, _ := s.Exec(ctx, `printf %s "$RAISQ_TEST_TOKEN"`, nil); r.Output != "from-env" {
+		t.Fatalf("the login variable should be inside, got %q", r.Output)
+	}
+}

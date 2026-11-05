@@ -80,13 +80,14 @@ func cmdFact(ctx context.Context, args []string) error {
 		topic := fs.String("topic", "", "file it goes in; default: the part of the id before /")
 		by := fs.String("by", "you", "who said it")
 		stakeholder := fs.Bool("needs-stakeholder", false, "only the stakeholder can confirm this; keep it inferred")
+		gap := fs.Bool("gap", false, "known to be unknown: the agent is told to leave it out")
 		pos, err := parse(fs, args[1:])
 		if err != nil {
 			return err
 		}
 		facts, _ := proj.Store.LoadFacts()
 		if len(pos) < 1 {
-			return usageErr{`raisq fact add <id> "text"  ·  raisq fact confirm <id>`}
+			return usageErr{`raisq fact add <id> "text"  ·  raisq fact add <id> --gap  ·  raisq fact confirm <id>`}
 		}
 		f, exists := facts.Get(pos[0])
 		if args[0] == "confirm" {
@@ -94,16 +95,23 @@ func cmdFact(ctx context.Context, args []string) error {
 				return fmt.Errorf("no fact %s", pos[0])
 			}
 		} else {
-			if len(pos) < 2 {
-				return usageErr{`raisq fact add <id> "text"`}
+			if len(pos) < 2 && !*gap {
+				return usageErr{`raisq fact add <id> "text", or raisq fact add <id> --gap when it isn't known`}
 			}
-			f = domain.Fact{ID: pos[0], Text: pos[1], Kind: f.Kind}
+			text := ""
+			if len(pos) > 1 {
+				text = pos[1]
+			}
+			f = domain.Fact{ID: pos[0], Text: text, Kind: f.Kind, Topic: f.Topic}
 			if *kind != "" {
 				f.Kind = *kind
 			}
 		}
 		f.Tag, f.SaidBy, f.SaidOn, f.Needs = domain.Confirmed, *by, time.Now().Format("2006-01-02"), ""
-		if *stakeholder {
+		switch {
+		case *gap && args[0] == "add":
+			f.Tag, f.Text = domain.Gap, ""
+		case *stakeholder:
 			f.Tag, f.Needs = domain.Inferred, "stakeholder"
 		}
 		t := *topic
@@ -212,6 +220,10 @@ func cmdDoctor(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// An old chat skill is worth knowing about, but nothing fails over it.
+	if stale := skill.Stale(proj.Dir, proj.SkillFolders()); len(stale) > 0 {
+		logf("! the agent skill in %s isn't this RaisQ version's: run raisq skill", strings.Join(stale, ", "))
+	}
 	problems := doctor(ctx, proj)
 	if len(problems) == 0 {
 		logf("✓ everything RaisQ needs is here")
@@ -225,9 +237,6 @@ func cmdDoctor(ctx context.Context, args []string) error {
 
 func doctor(ctx context.Context, proj *registry.Project) []string {
 	var problems []string
-	if stale := skill.Stale(proj.Dir, proj.SkillFolders()); len(stale) > 0 {
-		problems = append(problems, fmt.Sprintf("the agent skill in %s isn't this RaisQ version's: run raisq skill", strings.Join(stale, ", ")))
-	}
 	if _, err := proj.Store.LoadFacts(); err != nil {
 		problems = append(problems, "facts: "+err.Error())
 	}
@@ -279,6 +288,9 @@ func doctor(ctx context.Context, proj *registry.Project) []string {
 			where = append(where, l.Describe())
 			if l.IsDir() {
 				found = true
+				if len(l.Keep) > 0 {
+					problems = append(problems, fmt.Sprintf("%s: the login %s is a folder, which goes in whole, so keep: can't apply. Point file: at the one file the agent needs", f.Name, l.File))
+				}
 				continue
 			}
 			if _, err := l.Read(ctx); err == nil {

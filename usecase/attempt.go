@@ -273,7 +273,7 @@ func Run(ctx context.Context, d Deps, task string) (RunRecord, error) {
 	rec.Verdict = domain.Fail
 	note := fmt.Sprintf("%d attempts used", limit)
 	if d.Manual {
-		note = "failed the checks or the critic; fix it on the branch and run --check again"
+		note = "failed the checks or the critic; fix it on the branch, then raisq review --send-back \"what you fixed\" and raisq run --check"
 	}
 	return finish(d, task, run, rec, st, domain.Parked, domain.OutOfAttempts, note, last, nil)
 }

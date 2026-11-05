@@ -65,7 +65,15 @@ func (d *Docker) Start(ctx context.Context, req slot.StartRequest) (slot.Session
 	if req.SpecDir != "" {
 		args = append(args, "-v", req.SpecDir+":"+guestSpec+":ro")
 	}
-	loginDir, logins, loginEnv, err := copyLogin(ctx, d.Login)
+	// A login variable that's set replaces the copied login, so only one
+	// credential goes in.
+	sources := d.Login
+	for _, k := range d.LoginEnv {
+		if os.Getenv(k) != "" {
+			sources = nil
+		}
+	}
+	loginDir, logins, loginEnv, err := copyLogin(ctx, sources)
 	if err != nil {
 		return nil, err
 	}

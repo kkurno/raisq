@@ -308,7 +308,8 @@ func waitReady(ctx context.Context, s slot.Session, url string) error {
 
 type Extractor struct{ F File }
 
-func (e Extractor) Name() string { return e.F.Name }
+func (e Extractor) Name() string    { return e.F.Name }
+func (e Extractor) Needs() []string { return e.F.Needs }
 
 func (e Extractor) Extract(ctx context.Context, r slot.ExtractRequest) (string, error) {
 	cmd := strings.NewReplacer("{base}", r.Base, "{head}", r.Head).Replace(e.F.Run)

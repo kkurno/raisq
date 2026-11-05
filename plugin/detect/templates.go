@@ -17,7 +17,7 @@ var Slots = []string{"builder", "model", "checks", "provides", "extractor", "spe
 var templates = map[string]string{
 	"builder": `name: %s
 slot: builder
-vendor: <who makes the model, so the critic can be a different one>
+vendor: <who makes the model, so review packs can say when the critic is the same>
 tool:
   find: <command> --version
   install_hint: <how a person installs it>
@@ -25,7 +25,10 @@ tool:
 # write /raisq/out/result.json before it exits.
 run: <command that reads {prompt} and works in the current directory>
 install: <command that installs it in a fresh container, if the image lacks it>
-login: ["~/.<tool>/<credential file>:/root/.<tool>/<credential file>"]
+login:
+  - file: ~/.<tool>/<credential file>
+    to: /home/raisq/.<tool>/<credential file>
+    keep: [<the fields the agent needs>]
 login_env: [<API_KEY_VARIABLE>]
 image: node:22-bookworm
 `,

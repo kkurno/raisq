@@ -54,7 +54,7 @@ RaisQ exists because an AI's work isn't trusted until it's checked. You're an AI
 
 ## Questions
 
-When a command prints questions (lines starting with `?`), RaisQ needs the user before it can go on. Ask the user each one, exactly as written. Then pass their replies, word for word, in one `--answer` to the task the command named.
+RaisQ needs the user when `raisq task` prints questions (lines starting with `?`), or when a run ends with `Parked: question:` and the builder's question. Ask the user each question, exactly as written. Then pass their replies, word for word, in one `--answer` to the task the output named.
 
 ## Long runs
 

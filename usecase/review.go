@@ -120,7 +120,11 @@ func ReviewPack(d Deps, task, run string, rec RunRecord, last AttemptRecord) str
 	if rec.Parked == "" {
 		fmt.Fprintf(&b, "Decide: `raisq review %s --done` · `--send-back \"why\"` · or change the spec in `tasks/%s/spec.yaml` and send it back\n", task, task)
 	} else {
-		fmt.Fprintf(&b, "Decide: `raisq review %s --answer \"...\"` to requeue it, or `--send-back \"why\"`\n", task)
+		if rec.Parked == domain.Question {
+			fmt.Fprintf(&b, "Decide: `raisq review %s --answer \"...\"` to requeue it with your answer, or `--send-back \"why\"`\n", task)
+		} else {
+			fmt.Fprintf(&b, "Decide: `raisq review %s --send-back \"what to do differently\"` to requeue it\n", task)
+		}
 	}
 	return b.String()
 }
