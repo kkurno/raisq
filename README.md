@@ -76,12 +76,15 @@ RaisQ is built on a few ideas. They're why you can trust what it hands you.
 
 You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI coding agent with a command-line tool, logged in. RaisQ works with any agent; [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are the ones tested so far, and [any other can be added](docs/reference/plugins.md#builder).
 
-Install RaisQ from [Releases](https://github.com/kkurno/raisq/releases), or with Go, then set up your project from its folder:
+Install RaisQ on macOS or Linux, then set up your project from its folder:
 
 ```
-go install github.com/kkurno/raisq/cmd/raisq@latest
+curl -fsSL https://raw.githubusercontent.com/kkurno/raisq/main/install.sh | sh
+cd my-project
 raisq init
 ```
+
+The installer puts `raisq` in a folder that's already on your `PATH`, so it works straight away. Run it again to update. On Windows, or to install another way, see [installing](docs/guides/getting-started.md#1-install-raisq).
 
 `raisq init` finds your tests and your agent, and asks a few questions about your project. Commit the `.raisq/` folder it creates: it's how your project's work is judged, shared with your team. Your own settings and tasks stay in `.raisq/local/`, which git ignores, and a teammate who clones the project runs `raisq init` once for their machine.
 

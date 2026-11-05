@@ -27,3 +27,10 @@ jobs:
           for os in linux darwin windows; do for arch in amd64 arm64; do
             GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/raisq
           done; done
+      # The installer people run: it must install the latest release where a
+      # fresh shell finds it.
+      - run: |
+          sh -n install.sh
+          mkdir -p "$HOME/.local/bin"
+          PATH="$HOME/.local/bin:$PATH" sh install.sh
+          PATH="$HOME/.local/bin:$PATH" raisq version

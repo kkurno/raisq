@@ -18,17 +18,26 @@ Your project should also be a git repository with its work committed, and ideall
 
 ## 1. Install RaisQ
 
-Download the file for your computer from [Releases](https://github.com/kkurno/raisq/releases) and put it somewhere on your `PATH`, or install it with Go:
+On macOS or Linux, run:
 
 ```
-go install github.com/kkurno/raisq/cmd/raisq@latest
+curl -fsSL https://raw.githubusercontent.com/kkurno/raisq/main/install.sh | sh
 ```
 
-Check it works:
+It downloads the right file for your computer, checks it against the release's checksum, and puts it in a folder that's already on your `PATH`, such as `~/.local/bin`. If none of those folders is on your `PATH`, it says the one line to add. Check it works:
 
 ```
 raisq version
 ```
+
+If you see `command not found`, open a new terminal and try again, or follow the line the installer printed.
+
+**Other ways to install:**
+
+- **With Go:** `go install github.com/kkurno/raisq/cmd/raisq@latest`. Go puts it in `~/go/bin`, which often isn't on your `PATH`, so add it once: `echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc`, then open a new terminal.
+- **On Windows:** download `raisq-windows-amd64.exe` (or `-arm64` on an ARM PC) from [Releases](https://github.com/kkurno/raisq/releases), rename it to `raisq.exe`, and put it in a folder on your `PATH`.
+
+**To update,** run the installer again, or `go install` again if you used Go. `raisq update` prints the line. Then run `raisq skill` in each project, to refresh the chat skill.
 
 ## 2. Set up your project
 
