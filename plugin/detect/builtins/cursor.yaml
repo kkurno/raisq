@@ -1,5 +1,6 @@
 name: cursor
 slot: builder
+description: Cursor as the builder.
 vendor: cursor
 model: auto
 tool:

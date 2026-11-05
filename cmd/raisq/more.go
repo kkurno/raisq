@@ -15,7 +15,6 @@ import (
 	"github.com/kkurno/raisq/plugin/command"
 	"github.com/kkurno/raisq/plugin/detect"
 	"github.com/kkurno/raisq/plugin/login"
-	"github.com/kkurno/raisq/plugin/proc"
 	"github.com/kkurno/raisq/plugin/registry"
 	"github.com/kkurno/raisq/plugin/skill"
 	"github.com/kkurno/raisq/slot"
@@ -394,6 +393,13 @@ func cmdPlugin(ctx context.Context, args []string) error {
 		}
 		return nil
 	case "list":
+		if len(args) > 1 && args[1] == "--built-in" {
+			for _, b := range registry.Builtins() {
+				fmt.Printf("  %-12s %-20s %s\n", b.Slot, b.Name, b.What)
+			}
+			fmt.Println("\n  raisq plugin add <name> adds one, tried on the project first.")
+			return nil
+		}
 		for _, f := range proj.Files {
 			fmt.Printf("  %-12s %-24s %s\n", f.Slot, f.Name, filepath.Base(f.Path))
 		}
@@ -442,61 +448,65 @@ func slugify(s string) string {
 	return strings.Trim(b.String(), "-")
 }
 
-// pluginAdd has a model draft a plugin for a tool RaisQ hasn't seen, tests it
-// against the slot's contract, and saves it only once a person approves.
+// pluginAdd tests plugins, files or RaisQ's own, and adds them once a person
+// agrees: every check is run once on the project first, so they see whether
+// it can protect it before it judges any task. A check and the provider it
+// needs are added together.
 func pluginAdd(ctx context.Context, proj *registry.Project, args []string) error {
 	fs := flags("plugin add")
-	slotName := fs.String("slot", "", "the slot it fills: "+strings.Join(detect.Slots, ", "))
+	yes := fs.Bool("yes", false, "add them without asking: for an agent that has shown you the results")
 	pos, err := parse(fs, args)
 	if err != nil {
 		return err
 	}
-	if len(pos) == 0 || *slotName == "" {
-		return usageErr{"raisq plugin add <tool> --slot <slot>"}
+	if len(pos) == 0 {
+		return usageErr{"raisq plugin add <file or built-in name>... [--yes]  ·  raisq plugin list --built-in"}
 	}
-	tool := pos[0]
-	template, err := detect.Template(*slotName, tool)
+	logf("Testing %s. A check is tried once on the project as it is, in a fresh container.", strings.Join(pos, ", "))
+	cs, err := proj.Prepare(ctx, pos...)
 	if err != nil {
 		return err
 	}
-	t := newTTY()
-	if ok, err := t.Confirm(fmt.Sprintf("Run `%s --help` and send it to %s to draft a plugin?", tool, proj.Config.Critic)); err != nil || !ok {
-		return err
-	}
-	help, _ := proc.Shell(ctx, tool+" --help 2>&1 | head -200").Output()
-	if len(strings.TrimSpace(string(help))) == 0 {
-		return fmt.Errorf("%s --help printed nothing: is it installed?", tool)
-	}
-	usage := ""
-	if data, err := os.ReadFile(filepath.Join(proj.Dir, "package.json")); err == nil && strings.Contains(string(data), tool) {
-		for _, l := range strings.Split(string(data), "\n") {
-			if strings.Contains(l, tool) {
-				usage += strings.TrimSpace(l) + "\n"
+	ready := true
+	for _, c := range cs {
+		where := "your file"
+		if c.BuiltIn {
+			where = "built into RaisQ"
+		}
+		logf("%s · %s · %s", c.File.Name, c.File.Slot, where)
+		for _, p := range c.Problems {
+			logf("  ✗ %s", p)
+			ready = false
+		}
+		if t := c.Trial; t != nil {
+			mark := map[domain.CheckStatus]string{domain.CheckPass: "✓", domain.CheckFail: "!", domain.CheckBlocked: "✗"}[t.Status]
+			logf("  %s It %s.", mark, t.Verdict())
+			if t.Status != domain.CheckPass && strings.TrimSpace(t.Output) != "" {
+				logf("  Its output ended with:\n%s", domain.TailLines(t.Output, 15))
 			}
 		}
 	}
-	d, err := proj.Deps("", true)
-	if err != nil {
-		return err
+	if !ready {
+		return fmt.Errorf("nothing added: fix the above, then try again")
 	}
-	test := func(ctx context.Context, body string) []string { return command.Contract(ctx, body, proj.Dir) }
-	dr, err := usecase.DraftPlugin(ctx, d, tool, *slotName, template, string(help), usage, test, 3)
-	if err != nil {
-		return err
+	if !*yes {
+		t := person()
+		if t == nil {
+			return fmt.Errorf("nothing added yet. To add them: raisq plugin add %s --yes", strings.Join(pos, " "))
+		}
+		ok, err := t.Confirm("Add them? Checks run on every task from then on")
+		if err != nil || !ok {
+			return fmt.Errorf("nothing added")
+		}
 	}
-	fmt.Printf("\n%s\n", dr.Body)
-	logf("Passed the plugin test after %d draft(s).", dr.Tries)
-	if ok, err := t.Confirm("Save it to .raisq/plugins/? It's used on every task from then on."); err != nil || !ok {
-		return err
+	for _, c := range cs {
+		path, err := proj.Add(c)
+		if err != nil {
+			return err
+		}
+		logf("Added %s.", path)
 	}
-	p := filepath.Join(proj.Raisq, "plugins", tool+".yaml")
-	if _, err := os.Stat(p); err == nil {
-		return fmt.Errorf("%s exists: not overwritten", p)
-	}
-	if err := write(p, dr.Body); err != nil {
-		return err
-	}
-	logf("Saved %s.", p)
+	logf("Commit them so your team's tasks are checked the same way.")
 	return nil
 }
 
@@ -610,4 +620,51 @@ func cmdConfig(args []string) error {
 		logf("%s", n)
 	}
 	return nil
+}
+
+// cmdRubric adds or lists the critic's standing questions.
+func cmdRubric(args []string) error {
+	if len(args) == 0 {
+		return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric add <file or set>"}
+	}
+	proj, err := open()
+	if err != nil {
+		return err
+	}
+	switch args[0] {
+	case "list":
+		if len(args) > 1 && args[1] == "--built-in" {
+			for _, s := range registry.RubricSets() {
+				fmt.Printf("  %s\n", s)
+			}
+			fmt.Println("\n  raisq rubric add <set> adds one.")
+			return nil
+		}
+		rs, err := proj.Store.LoadRubrics()
+		if err != nil {
+			return err
+		}
+		for _, r := range rs {
+			state := ""
+			if r.Retired {
+				state = " (retired)"
+			}
+			fmt.Printf("  %-28s fails if %-3s %s%s\n", r.ID, r.FailIf, r.Ask, state)
+		}
+		return nil
+	case "add":
+		if len(args) < 2 {
+			return usageErr{"raisq rubric add <file or set>"}
+		}
+		path, rs, err := proj.AddRubrics(args[1])
+		if err != nil {
+			return err
+		}
+		for _, r := range rs {
+			logf("+ %s: %s (fails if %s)", r.ID, r.Ask, r.FailIf)
+		}
+		logf("Added to %s. Commit it so the critic asks these on your team's tasks too.", path)
+		return nil
+	}
+	return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric add <file or set>"}
 }

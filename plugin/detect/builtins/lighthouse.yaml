@@ -1,5 +1,6 @@
 name: lighthouse
 slot: checks
+description: Fails when the site's Lighthouse performance score drops below 90. Needs a site provider.
 priority: 40
 tool:
   find: npx lighthouse --version

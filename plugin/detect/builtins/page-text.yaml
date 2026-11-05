@@ -1,5 +1,6 @@
 name: page-text
 slot: extractor
+description: Gives the critic the text of every page the task changed, as a user reads it. Needs a site provider.
 # The text of every page the task changed, as a user reads it, for the critic.
 run: builtin:page-text
 port: 3000

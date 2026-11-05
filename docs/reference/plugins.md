@@ -147,7 +147,7 @@ The builder can be any AI coding agent that has a command-line tool and can run 
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude-code` | the login file on Linux, the Keychain on macOS |
 | [Cursor](https://cursor.com/cli) | `cursor` | the Keychain on macOS |
 
-For any other agent, write a plugin file like the one below, or let `raisq plugin add <agent> --slot builder` draft one from its `--help`, then choose it with `raisq config builder <name>`. The critic is a `model` plugin and works the same way: any AI that can answer a prompt with no tools.
+For any other agent, write a plugin file like the one below (your chat agent can draft it from the tool's `--help`), add it with `raisq plugin add <file>`, then choose it with `raisq config builder <name>`. The critic is a `model` plugin and works the same way: any AI that can answer a prompt with no tools.
 
 Here's the built-in Claude Code plugin as an example:
 
@@ -287,11 +287,16 @@ They go with the plugin: remove it with `raisq plugin remove <name>`, and the in
 
 ```
 raisq plugin list                     # every plugin file in the project
+raisq plugin list --built-in          # RaisQ's own, ready to add by name
 raisq plugin new checks my-check      # a starting file for a slot, with <...> to fill
-raisq plugin test my-check            # checks it against its slot's contract
-raisq plugin add mytool --slot checks # a model drafts it from `mytool --help`, tests it, asks before saving
+raisq plugin add my-check.yaml        # tests it, tries a check once on the project, asks before saving
+raisq plugin add api-test.yaml postgres.yaml   # a check and the provider it needs, together
+raisq plugin add links                # a built-in, by name
+raisq plugin test my-check            # checks a plugin in the project against its slot's contract
 raisq plugin remove my-check          # stop using one
 ```
+
+`raisq plugin add` tries each check once on the project as it is, in a fresh container, and says what it means: it **passes**, so it will catch a task that breaks it; it **already fails**, so it can't catch anything until that's fixed; or it's **blocked**, because a tool or something it needs is missing. From an agent's chat, it adds nothing until it's run again with `--yes`, which the skill does only after you agree.
 
 A plugin for one task only goes in `.raisq/local/tasks/<task>/plugins/`.
 

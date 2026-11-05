@@ -1,5 +1,6 @@
 name: claude-code-critic
 slot: model
+description: Claude as the critic, with no tools.
 vendor: anthropic
 # An alias, so it works through any account or gateway; the CLI resolves it.
 model: opus

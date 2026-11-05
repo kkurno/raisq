@@ -1,5 +1,6 @@
 name: links
 slot: checks
+description: Fails when an internal link doesn't resolve. Needs a site provider.
 run: builtin:links
 needs: [site]
 port: 3000

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -59,6 +60,20 @@ type Rubric struct {
 	Lesson    string           `yaml:"lesson,omitempty" json:"lesson,omitempty"`
 	Retired   bool             `yaml:"retired,omitempty" json:"retired,omitempty"`
 	Overruled int              `yaml:"overruled,omitempty" json:"overruled,omitempty"`
+}
+
+// Validate is what a rubric needs to be judged: an id, a yes-or-no question,
+// and which answer fails.
+func (r Rubric) Validate() error {
+	switch {
+	case strings.TrimSpace(r.ID) == "":
+		return fmt.Errorf("a rubric needs an id, such as web/form-states")
+	case strings.TrimSpace(r.Ask) == "":
+		return fmt.Errorf("rubric %s needs ask: a question answered yes or no", r.ID)
+	case r.FailIf != Yes && r.FailIf != No:
+		return fmt.Errorf("rubric %s: fail_if is yes or no, the answer that fails", r.ID)
+	}
+	return nil
 }
 
 // Judgement is one decided item for the review pack.

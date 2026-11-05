@@ -43,10 +43,12 @@ Now and then:
   raisq fact add|list|confirm         project facts
   raisq learn <task> "what was wrong" turn a mistake into a check or a rubric
   raisq config [key [value]]          see or change a setting, such as raisq config builder cursor
+  raisq plugin add <file|name>...     add checks and providers, each tried on the project first
+  raisq rubric add <file or set>      add standing questions for the critic
   raisq skill [agent]                 use RaisQ from your agent's chat: /raisq ...
   raisq doctor                        when something isn't working
   raisq bench critic                  measure the critic before trusting it
-  raisq slots | plugin list|new|add|remove|test   plugins
+  raisq slots | plugin list [--built-in]|new|remove|test   plugins
   raisq version | update
 `
 
@@ -92,6 +94,8 @@ func run(ctx context.Context, args []string) error {
 		return cmdLearn(ctx, rest)
 	case "config":
 		return cmdConfig(rest)
+	case "rubric":
+		return cmdRubric(rest)
 	case "skill":
 		return cmdSkill(rest)
 	case "doctor":

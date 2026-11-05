@@ -27,6 +27,9 @@ type File struct {
 	Name string `yaml:"name"`
 	Slot string `yaml:"slot"`
 	Run  string `yaml:"run"`
+	// Description says in one line what it does, for a person or an agent
+	// choosing plugins.
+	Description string `yaml:"description,omitempty"`
 	// Dir is the folder, relative to the project, a check runs in, such as
 	// one package of a monorepo. Its tests and locks globs are relative to it.
 	Dir      string   `yaml:"dir,omitempty"`

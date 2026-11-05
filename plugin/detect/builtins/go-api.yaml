@@ -1,5 +1,6 @@
 name: go-api
 slot: checks
+description: Fails when a Go library's exported name is removed or changed, unless the task allows it.
 priority: 25
 # Fails when an exported Go name is removed or changed. Adding is fine. A task
 # that's meant to break the API says `changes_api: true` in its spec.yaml.

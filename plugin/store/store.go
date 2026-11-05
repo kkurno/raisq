@@ -236,6 +236,11 @@ func (s *Files) LoadRubrics() ([]domain.Rubric, error) {
 		if err := yaml.Unmarshal(data, &rs); err != nil {
 			return fmt.Errorf("%s: %w", p, err)
 		}
+		for _, r := range rs {
+			if err := r.Validate(); err != nil {
+				return fmt.Errorf("%s: %w", p, err)
+			}
+		}
 		out = append(out, rs...)
 		return nil
 	})

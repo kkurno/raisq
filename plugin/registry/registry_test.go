@@ -1,7 +1,9 @@
 package registry
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -227,5 +229,110 @@ func TestClonedProjectNeedsThisMachineSetUp(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, ".raisq", "facts"), 0o755)
 	if _, err := Open(dir); err != ErrNoMachine {
 		t.Fatalf("want ErrNoMachine, got %v", err)
+	}
+}
+
+func gitRepo(t *testing.T, dir string) {
+	t.Helper()
+	for _, c := range []string{"init -q -b main", "config user.email t@t", "config user.name t", "add -A", "commit -qm init --allow-empty"} {
+		cmd := exec.Command("git", strings.Fields(c)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %s", c, out)
+		}
+	}
+}
+
+// What an agent drafts is tested before it can judge a task: it must fill
+// its slot's contract, have the providers it needs, and is run once on the
+// project, with nothing saved until a person agrees.
+func TestPrepareTestsBeforeAdding(t *testing.T) {
+	p := newProject(t, "builder: claude-code\ncritic: cursor-critic\nisolation: none\n", map[string]string{
+		"claude-code":   "name: claude-code\nslot: builder\nvendor: a\nrun: x {prompt}\n",
+		"cursor-critic": "name: cursor-critic\nslot: model\nvendor: b\nrun: x\n",
+	})
+	os.WriteFile(filepath.Join(p.Dir, "ok.txt"), []byte("ok\n"), 0o644)
+	gitRepo(t, p.Dir)
+	file := func(name, body string) string {
+		path := filepath.Join(t.TempDir(), name+".yaml")
+		os.WriteFile(path, []byte(body), 0o644)
+		return path
+	}
+	ctx := context.Background()
+	one := func(src ...string) Candidate {
+		t.Helper()
+		cs, err := p.Prepare(ctx, src...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cs[0]
+	}
+
+	c := one(file("bad", "name: bad\nslot: checks\nrun: <command>\n"))
+	if c.Ready() {
+		t.Fatalf("a template left unfilled must not be ready: %+v", c)
+	}
+	if _, err := p.Add(c); err == nil {
+		t.Fatal("a plugin that fails its contract is never saved")
+	}
+
+	c = one(file("needy", "name: needy\nslot: checks\nrun: true\nneeds: [cache]\n"))
+	if c.Ready() || !strings.Contains(strings.Join(c.Problems, " "), "cache") {
+		t.Fatalf("a check needing a provider nobody adds must say so: %+v", c.Problems)
+	}
+	os.WriteFile(filepath.Join(p.Dir, "cache.env"), []byte("CACHE=up\n"), 0o644)
+	cs, err := p.Prepare(ctx, file("needy", "name: needy\nslot: checks\nrun: test \"$CACHE\" = up\nneeds: [cache]\n"),
+		file("cache", "name: cache\nslot: provides\nfrom: host:cache.env\n"))
+	if err != nil || !cs[0].Ready() || cs[0].Trial == nil || cs[0].Trial.Status != "pass" {
+		t.Fatalf("a check added with its provider is tried with it: %v %+v", err, cs)
+	}
+
+	c = one(file("good", "name: good\nslot: checks\nrun: grep -q ok ok.txt\n"))
+	if !c.Ready() || c.Trial == nil || c.Trial.Status != "pass" {
+		t.Fatalf("a working check is tried and passes: %+v %+v", c, c.Trial)
+	}
+	if _, err := os.Stat(filepath.Join(p.Raisq, "plugins", "good.yaml")); err == nil {
+		t.Fatal("preparing saves nothing")
+	}
+	c = one(file("old", "name: old\nslot: checks\nrun: grep -q missing ok.txt\n"))
+	if c.Trial == nil || c.Trial.Status != "fail" || !strings.Contains(c.Trial.Verdict(), "already fails") {
+		t.Fatalf("a check failing before any task says it can't catch anything yet: %+v", c.Trial)
+	}
+
+	if _, err := p.Add(one(file("good", "name: good\nslot: checks\nrun: grep -q ok ok.txt\n"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Prepare(ctx, file("good2", "name: good\nslot: checks\nrun: true\n")); err == nil {
+		t.Fatal("a second plugin with the same name must be refused, never overwrite")
+	}
+	if c := one("links"); !c.BuiltIn {
+		t.Fatalf("a built-in is added by its name: %+v", c)
+	}
+}
+
+// A rubric file is added whole or not at all: one bad rubric, or one whose id
+// the project already has, adds none of it.
+func TestAddRubricsAllOrNothing(t *testing.T) {
+	p := newProject(t, "builder: x\ncritic: y\n", nil)
+	file := func(body string) string {
+		path := filepath.Join(t.TempDir(), "api.yaml")
+		os.WriteFile(path, []byte(body), 0o644)
+		return path
+	}
+	good := "- id: api/auth\n  ask: Is every new endpoint behind an auth guard?\n  fail_if: no\n"
+	if _, _, err := p.AddRubrics(file(good + "- id: api/bad\n  ask: x\n  fail_if: maybe\n")); err == nil {
+		t.Fatal("fail_if must be yes or no")
+	}
+	if rs, _ := p.Store.LoadRubrics(); len(rs) != 0 {
+		t.Fatalf("a file with a bad rubric adds none of it: %+v", rs)
+	}
+	if _, _, err := p.AddRubrics(file(good)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := p.AddRubrics(file(good)); err == nil {
+		t.Fatal("a rubric whose id the project has must be refused")
+	}
+	if _, rs, err := p.AddRubrics("web"); err != nil || len(rs) == 0 {
+		t.Fatalf("a built-in set is added by its name: %v", err)
 	}
 }

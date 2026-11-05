@@ -1,5 +1,6 @@
 name: contacts
 slot: checks
+description: Fails when a page shows a phone number or email that isn't in the facts. Needs a site provider.
 # Fails when a page shows a phone number or email that isn't in the facts.
 run: builtin:contacts
 needs: [site]

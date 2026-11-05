@@ -1,5 +1,6 @@
 name: playwright
 slot: checks
+description: Runs the Playwright tests against the site, and proves new ones. Needs a site provider.
 priority: 30
 tool:
   find: npx playwright --version

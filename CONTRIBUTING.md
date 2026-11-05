@@ -41,7 +41,7 @@ The order of an attempt's steps lives in `usecase/attempt.go`. No plugin, preset
 
 ## Adding a tool
 
-Most new tools need no Go at all: a plugin file in `.raisq/plugins/`, filled through the built-in `command` plugin. See [docs/reference/plugins.md](docs/reference/plugins.md). A built-in plugin file that `raisq init` writes lives in `plugin/detect/builtins/`.
+Most new tools need no Go at all: a plugin file in `.raisq/plugins/`, filled through the built-in `command` plugin. See [docs/reference/plugins.md](docs/reference/plugins.md). RaisQ's built-in plugin files live in `plugin/detect/builtins/`; `raisq plugin list --built-in` lists them, and each needs a one-line `description:`.
 
 Write Go only when a plugin file can't express it, such as the page crawler in `plugin/builtin/`.
 

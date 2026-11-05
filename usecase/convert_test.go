@@ -60,23 +60,3 @@ func TestConvertStopsOnAnInventedQuote(t *testing.T) {
 		t.Fatal("a quote that isn't in the file must stop the conversion")
 	}
 }
-
-func TestDraftPluginRetriesOnFailures(t *testing.T) {
-	m := &fake.Model{Fn: func(p string) string {
-		if strings.Contains(p, "failed the plugin test") {
-			return "```yaml\nname: mytool\nslot: checks\nrun: mytool check\n```"
-		}
-		return "name: mytool\nslot: checks\nrun: <command>\n"
-	}}
-	test := func(ctx context.Context, body string) []string {
-		if strings.Contains(body, "<command>") {
-			return []string{"has template parts left to fill"}
-		}
-		return nil
-	}
-	dr, err := DraftPlugin(context.Background(), Deps{Model: m}, "mytool", "checks", "", "help", "", test, 3)
-	must(t, err)
-	if dr.Tries != 2 || !strings.Contains(dr.Body, "run: mytool check") || strings.Contains(dr.Body, "```") {
-		t.Fatalf("%+v", dr)
-	}
-}

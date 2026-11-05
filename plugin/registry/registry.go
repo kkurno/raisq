@@ -154,6 +154,9 @@ func (p *Project) find(slotName, name string) (command.File, bool) {
 	return command.File{}, false
 }
 
+// HasChecks is whether any check judges the project's work.
+func (p *Project) HasChecks() bool { return len(p.all("checks")) > 0 }
+
 func (p *Project) all(slotName string) []command.File {
 	var out []command.File
 	for _, f := range p.Files {
@@ -217,19 +220,7 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 	d.Isolation = iso
 
 	for _, f := range p.all("checks") {
-		switch f.Run {
-		case "builtin:contacts":
-			d.Checks = append(d.Checks, builtin.Contacts{CheckName: f.Name, Facts: p.Store.LoadFacts, Pages: builtin.PageText{Port: f.Port}})
-		case "builtin:go-api":
-			d.Checks = append(d.Checks, builtin.GoAPI{CheckName: f.Name, Store: p.Store, Base: func() string {
-				st, _ := p.Store.LoadState(task)
-				return st.Base
-			}, Allowed: p.apiAllowed(task)})
-		case "builtin:links":
-			d.Checks = append(d.Checks, builtin.Links{CheckName: f.Name, Pages: builtin.PageText{Port: f.Port}})
-		default:
-			d.Checks = append(d.Checks, command.Check{F: f})
-		}
+		d.Checks = append(d.Checks, p.check(f, task))
 	}
 	for _, f := range p.all("provides") {
 		d.Providers = append(d.Providers, command.Provider{F: f, Project: p.Dir})
@@ -256,6 +247,22 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 		}
 	}
 	return d, nil
+}
+
+// check is the check a plugin file describes: a built-in one, or a command.
+func (p *Project) check(f command.File, task string) slot.Check {
+	switch f.Run {
+	case "builtin:contacts":
+		return builtin.Contacts{CheckName: f.Name, Facts: p.Store.LoadFacts, Pages: builtin.PageText{Port: f.Port}}
+	case "builtin:go-api":
+		return builtin.GoAPI{CheckName: f.Name, Store: p.Store, Base: func() string {
+			st, _ := p.Store.LoadState(task)
+			return st.Base
+		}, Allowed: p.apiAllowed(task)}
+	case "builtin:links":
+		return builtin.Links{CheckName: f.Name, Pages: builtin.PageText{Port: f.Port}}
+	}
+	return command.Check{F: f}
 }
 
 func (p *Project) isolation(builder command.File) (slot.Isolation, error) {

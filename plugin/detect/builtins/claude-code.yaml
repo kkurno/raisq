@@ -1,5 +1,6 @@
 name: claude-code
 slot: builder
+description: Claude Code as the builder.
 vendor: anthropic
 model: sonnet
 tool:

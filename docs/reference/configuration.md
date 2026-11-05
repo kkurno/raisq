@@ -64,7 +64,8 @@ Change what `init` chose with commands. They check a change before saving it, so
 | See every setting, defaults included | `raisq config` |
 | Change one | `raisq config <key> <value>`, such as `raisq config builder cursor` or `raisq config attempts 5` |
 | Put one back to its default | `raisq config --unset <key>` |
-| Add a check or a provider | `raisq plugin new <slot> <name>`, or `raisq plugin add <tool> --slot <slot>` to have one drafted |
+| Add checks or providers | `raisq plugin add <file or built-in>...`: each is tested, and every check is tried once on the project first. `raisq plugin new <slot> <name>` writes a file to fill in; `raisq plugin list --built-in` lists RaisQ's own. |
+| Add rubrics | `raisq rubric add <file or set>`, such as `raisq rubric add web` |
 | Stop running a check | `raisq plugin remove <name>` |
 | Add or change a fact | `raisq fact add <id> "text"` |
 

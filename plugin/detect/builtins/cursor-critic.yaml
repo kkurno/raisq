@@ -1,5 +1,6 @@
 name: cursor-critic
 slot: model
+description: Cursor as the critic, in ask mode.
 vendor: cursor
 model: auto
 tool:
