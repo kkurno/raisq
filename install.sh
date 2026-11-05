@@ -10,7 +10,7 @@ fail() { echo "raisq install: $*" >&2; exit 1; }
 case "$(uname -s)" in
   Darwin) os=darwin ;;
   Linux) os=linux ;;
-  *) fail "this script is for macOS and Linux. On Windows, download raisq-windows-*.exe from https://github.com/$repo/releases" ;;
+  *) fail "RaisQ runs on macOS and Linux only" ;;
 esac
 case "$(uname -m)" in
   x86_64 | amd64) arch=amd64 ;;

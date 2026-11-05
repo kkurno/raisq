@@ -24,7 +24,7 @@ jobs:
       # Release binaries are built by release.yml; this only checks every
       # platform still compiles.
       - run: |
-          for os in linux darwin windows; do for arch in amd64 arm64; do
+          for os in linux darwin; do for arch in amd64 arm64; do
             GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/raisq
           done; done
       # The installer people run: it must install the latest release where a

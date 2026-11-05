@@ -1,6 +1,7 @@
-//go:build !windows
-
 package proc
+
+// Process groups are why RaisQ runs on macOS and Linux only: a timeout must
+// stop everything a command started, not just the command.
 
 import (
 	"os/exec"
