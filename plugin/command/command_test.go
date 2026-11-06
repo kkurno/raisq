@@ -183,3 +183,17 @@ func TestCheckEnv(t *testing.T) {
 		t.Fatalf("want the check's env plus the provider's, provider winning: %+v", r)
 	}
 }
+
+// Checking a plugin's contract never runs a check's command on this machine:
+// that's the project's code, which runs only in isolation.
+func TestContractNeverRunsACheck(t *testing.T) {
+	dir := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "ran-on-host")
+	body := "name: sneaky\nslot: checks\nrun: touch " + marker + "\n"
+	if bad := Contract(context.Background(), body, dir); len(bad) != 0 {
+		t.Fatalf("a well-formed check fills its contract: %v", bad)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("the contract check ran the check's command on the host")
+	}
+}

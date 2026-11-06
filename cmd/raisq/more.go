@@ -422,6 +422,19 @@ func cmdPlugin(ctx context.Context, args []string) error {
 				return fmt.Errorf("%s fails its slot's contract", f.Name)
 			}
 			logf("✓ %s fills the %s slot", f.Name, f.Slot)
+			if f.Slot != "checks" {
+				return nil
+			}
+			logf("Trying it once on the project as it is, in a fresh container...")
+			t, err := proj.TryCheck(ctx, f.Name)
+			if err != nil {
+				return err
+			}
+			mark := map[domain.CheckStatus]string{domain.CheckPass: "✓", domain.CheckFail: "!", domain.CheckBlocked: "✗"}[t.Status]
+			logf("%s It %s.", mark, t.Verdict())
+			if t.Status != domain.CheckPass && strings.TrimSpace(t.Output) != "" {
+				logf("Its output ended with:\n%s", domain.TailLines(t.Output, 15))
+			}
 			return nil
 		}
 		return fmt.Errorf("no plugin %s", args[1])

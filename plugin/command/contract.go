@@ -11,14 +11,12 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/kkurno/raisq/plugin/proc"
-	"github.com/kkurno/raisq/slot"
 )
 
-// Contract checks a plugin file against its slot's contract: the fields
-// the slot needs, no template left unfilled, and, where it's safe to, a run
-// against the slot's example. It returns what's wrong.
+// Contract checks a plugin file against its slot's contract: the fields the
+// slot needs, no template left unfilled, and a model's answer to a fixed
+// question. It never runs a check's command: that's the project's code, which
+// runs only in isolation, through the trial run. It returns what's wrong.
 func Contract(ctx context.Context, body, dir string) []string {
 	var f File
 	if err := yaml.Unmarshal([]byte(body), &f); err != nil {
@@ -81,29 +79,20 @@ func Contract(ctx context.Context, body, dir string) []string {
 	if len(bad) > 0 {
 		return bad
 	}
-	// Run the slot's example where it can't touch anything: a model answers a
-	// fixed question; a check runs in the project but changes nothing.
-	switch f.Slot {
-	case "model":
+	if f.Slot == "checks" && f.Dir != "" {
+		if info, err := os.Stat(filepath.Join(dir, f.Dir)); err != nil || !info.IsDir() {
+			return []string{"dir " + f.Dir + " isn't a folder in the project"}
+		}
+	}
+	// A model runs on the host by design, with no tools, so asking it a fixed
+	// question is safe and shows it answers.
+	if f.Slot == "model" {
 		out, err := Model{F: f, Timeout: 3 * time.Minute}.Ask(ctx, `Answer with JSON only: {"ok": true}`)
 		if err != nil {
 			return []string{"the example failed: " + err.Error()}
 		}
 		if !strings.Contains(out, "ok") {
 			return []string{"the example's answer wasn't JSON: " + strings.TrimSpace(out)}
-		}
-	case "checks":
-		s, err := hostSession(dir)
-		if err != nil {
-			return []string{err.Error()}
-		}
-		if f.Dir != "" {
-			if info, err := os.Stat(filepath.Join(dir, f.Dir)); err != nil || !info.IsDir() {
-				return []string{"dir " + f.Dir + " isn't a folder in the project"}
-			}
-		}
-		if r := (Check{F: f}).Run(ctx, s, nil); r.Status == "blocked" {
-			return []string{"the example run couldn't find its tool: " + strings.TrimSpace(r.Output)}
 		}
 	}
 	return nil
@@ -119,22 +108,3 @@ func stripComments(s string) string {
 	}
 	return strings.Join(out, "\n")
 }
-
-type hostSess struct{ dir string }
-
-func hostSession(dir string) (slot.Session, error) { return hostSess{dir}, nil }
-
-func (h hostSess) Paths() slot.Paths { return slot.Paths{Workdir: h.dir} }
-func (h hostSess) Exec(ctx context.Context, cmd string, env map[string]string) (slot.ExecResult, error) {
-	c := proc.Shell(ctx, cmd)
-	c.Dir = h.dir
-	c.Env = os.Environ()
-	out, err := c.CombinedOutput()
-	if ee, ok := err.(*exec.ExitError); ok {
-		return slot.ExecResult{Exit: ee.ExitCode(), Output: string(out)}, nil
-	}
-	return slot.ExecResult{Output: string(out)}, err
-}
-func (h hostSess) Background(context.Context, string, map[string]string) error { return nil }
-func (h hostSess) URL(int) (string, error)                                     { return "", nil }
-func (h hostSess) Stop(context.Context) error                                  { return nil }

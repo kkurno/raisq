@@ -292,11 +292,11 @@ raisq plugin new checks my-check      # writes my-check.yaml here, every field e
 raisq plugin add my-check.yaml        # tests it, tries a check once on the project, asks before saving
 raisq plugin add api-test.yaml postgres.yaml   # a check and the provider it needs, together
 raisq plugin add links                # a built-in, by name
-raisq plugin test my-check            # checks a plugin in the project against its slot's contract
+raisq plugin test my-check            # checks a plugin's file, and tries a check once in a fresh container
 raisq plugin remove my-check          # stop using one
 ```
 
-`raisq plugin add` tries each check once on the project as it is, in a fresh container, and says what it means: it **passes**, so it will catch a task that breaks it; it **already fails**, so it can't catch anything until that's fixed; or it's **blocked**, because a tool or something it needs is missing. From an agent's chat, it adds nothing until it's run again with `--yes`, which the skill does only after you agree.
+A check's command only ever runs in the container: checking a plugin's file never runs it on your machine. `raisq plugin add` tries each check once on the project as it is, in a fresh container, and says what it means: it **passes**, so it will catch a task that breaks it; it **already fails**, so it can't catch anything until that's fixed; or it's **blocked**, because a tool or something it needs is missing. From an agent's chat, it adds nothing until it's run again with `--yes`, which the skill does only after you agree.
 
 The easiest way to write plugins is to ask your agent: `/raisq set up this project` reads your CI and scripts and drafts them for you.
 

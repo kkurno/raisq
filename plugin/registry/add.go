@@ -169,6 +169,28 @@ func (p *Project) Prepare(ctx context.Context, from ...string) ([]Candidate, err
 	return cs, nil
 }
 
+// TryCheck runs one of the project's checks once on the project as it is, in
+// a fresh container with the providers it needs, the same trial plugin add
+// runs before adding one.
+func (p *Project) TryCheck(ctx context.Context, name string) (usecase.Trial, error) {
+	f, ok := p.find("checks", name)
+	if !ok {
+		return usecase.Trial{}, fmt.Errorf("no check %s in .raisq/plugins/", name)
+	}
+	d, err := p.Deps("", true)
+	if err != nil {
+		return usecase.Trial{}, err
+	}
+	if err := d.Isolation.Available(ctx); err != nil {
+		return usecase.Trial{}, err
+	}
+	trials, err := usecase.TrialChecks(ctx, d, []slot.Check{p.check(f, "")})
+	if err != nil {
+		return usecase.Trial{}, err
+	}
+	return trials[name], nil
+}
+
 // Add saves a prepared plugin into .raisq/plugins/, never over one that's
 // there, and returns where.
 func (p *Project) Add(c Candidate) (string, error) {
