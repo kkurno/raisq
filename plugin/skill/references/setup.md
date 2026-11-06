@@ -11,6 +11,8 @@ RaisQ has a builder AI make each task in a container, then decides pass or fail 
 - **Rubrics** are yes-or-no questions a separate AI answers about each task's result, with a quote, for what no command can check.
 - **Facts** are what's true about the project, such as the business's phone number, or a rule like "all copy is in British English". The critic checks the result against them, so the builder can't make them up.
 
+RaisQ doesn't tell the builder how to work in the project. The builder follows the project's own instructions, as any agent does: its `AGENTS.md` or `CLAUDE.md`, and its agent skills. Those are the project's, not RaisQ's.
+
 ## Steps
 
 0. **Check the machine first:** `raisq doctor`. RaisQ needs Docker or Podman running, both for the builder and for the services checks need. If it reports a problem, tell the user and stop until it's fixed. Never change `isolation` to get past it: `isolation: none` runs the builder directly on the user's machine, and is the user's decision alone.
@@ -120,7 +122,7 @@ raisq fact add orders/minimum --gap
 
 - **Kinds:** `contact`, `hours`, `price`, `terms` (rechecked every 180, 90, 30 and 90 days) and `rule` (never expires).
 - **Only the user says what's true.** Ask for each fact and record their words. If they don't know one, add it with `--gap`: the builder is then told to leave it out instead of inventing it.
-- **Rules from `CLAUDE.md` and similar files:** a rule about what the code or its output must be ("no console.log in committed code", "every page has a title") is a fact with `--kind rule`, and the critic checks each task against it. Instructions about how to work ("run the tests before committing") aren't facts: leave them. List the rules you found, and add only the ones the user confirms.
+- **Rules from `CLAUDE.md` and similar files:** a rule about what the code or its output must be ("no console.log in committed code", "every page has a title") is a fact with `--kind rule`, and the critic checks each task against it. Instructions about how to work ("run the tests before committing", "use Playwright for anything in the browser") aren't facts: they belong in the project's `AGENTS.md`, `CLAUDE.md` or an agent skill, which the builder already reads. If the project has none and the user wants some, propose adding them there, as a change to their project. List the rules you found, and add only the ones the user confirms.
 
 ## Trial results
 

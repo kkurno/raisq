@@ -270,18 +270,11 @@ slot: report
 run: '[ "$RAISQ_STATE" = ready ] && git push -q origin "$RAISQ_BRANCH" && gh pr create --draft --head "$RAISQ_BRANCH" --title "$RAISQ_TASK" --body-file -'
 ```
 
-## Telling the agent how to use a tool
+## Telling the agent how to work
 
-Any plugin can add instructions to the agent's prompt:
+Plugins don't carry instructions for the agent. The builder follows your project's own instructions, as it would anywhere: your `AGENTS.md` or `CLAUDE.md`, and your agent skills, such as one on how to write a Playwright test. They're your project's files, so your team's chat agents follow them too.
 
-```yaml
-for_ai:
-  when: Changing anything a user sees in the browser
-  how: Add or update a Playwright test for every page you change.
-  never: Never update screenshots to make a test pass.
-```
-
-They go with the plugin: remove it with `raisq plugin remove <name>`, and the instruction goes too.
+A rule the result must keep, such as "every page has a title", is a [fact](../guides/facts.md) with `kind: rule`, so the critic checks each task against it.
 
 ## A check runs one command
 

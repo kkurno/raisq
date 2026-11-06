@@ -27,15 +27,9 @@ How to finish:
 - Every name, number, price, contact detail or condition you write must come from the facts. Read the topic before you write it. A fact marked gap is unknown: leave it out.
 - If you add a test, it must fail without your change and pass with it.
 - Tests that already exist are run as they were before your change, so editing them changes nothing.
+- Follow this project's own instructions for working in it: its AGENTS.md or CLAUDE.md, and its agent skills. Where one conflicts with the rules above, these rules win.
 
 `)
-	if len(d.ForAI) > 0 {
-		b.WriteString("## How to use this project's tools\n\n")
-		for _, f := range d.ForAI {
-			b.WriteString(f + "\n")
-		}
-		b.WriteString("\n")
-	}
 	if len(facts.Items) > 0 {
 		fmt.Fprintf(&b, "## Facts index\n\nEvery fact, one line each. Full facts are in %s, one file per topic.\n\n", filepath.Join(p.Spec, "facts"))
 		b.WriteString(facts.Index())

@@ -72,11 +72,6 @@ type File struct {
 		Supported   string `yaml:"supported,omitempty"`
 		InstallHint string `yaml:"install_hint,omitempty"`
 	} `yaml:"tool,omitempty"`
-	ForAI *struct {
-		When  string `yaml:"when"`
-		How   string `yaml:"how"`
-		Never string `yaml:"never,omitempty"`
-	} `yaml:"for_ai,omitempty"`
 	Lesson string `yaml:"lesson,omitempty"`
 	Path   string `yaml:"-"`
 }
@@ -107,6 +102,9 @@ func Load(dirs ...string) ([]File, error) {
 			if f.Name == "" || f.Slot == "" {
 				return nil, fmt.Errorf("%s: a plugin file needs name and slot", p)
 			}
+			if err := retired(data); err != nil {
+				return nil, fmt.Errorf("%s: %w", p, err)
+			}
 			f.Path = p
 			out = append(out, f)
 		}
@@ -115,15 +113,17 @@ func Load(dirs ...string) ([]File, error) {
 	return out, nil
 }
 
-func (f File) RenderForAI() string {
-	if f.ForAI == nil {
-		return ""
+// retired is an error for a field RaisQ no longer reads, so a file that
+// still has one fails loudly instead of losing what it said.
+func retired(data []byte) error {
+	var raw map[string]any
+	if yaml.Unmarshal(data, &raw) != nil {
+		return nil
 	}
-	s := fmt.Sprintf("### %s\nWhen: %s\nHow: %s\n", f.Name, f.ForAI.When, f.ForAI.How)
-	if f.ForAI.Never != "" {
-		s += "Never: " + f.ForAI.Never + "\n"
+	if _, ok := raw["for_ai"]; ok {
+		return fmt.Errorf("for_ai is gone: the builder now follows the project's own instructions. Move it to the project's AGENTS.md, CLAUDE.md or an agent skill, then delete it here")
 	}
-	return s
+	return nil
 }
 
 // --- checks ---

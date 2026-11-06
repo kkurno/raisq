@@ -522,3 +522,14 @@ func TestBrokenProviderBlocksOnlyItsChecks(t *testing.T) {
 		t.Fatalf("a blocked check still parks the task, never passes: %+v", st)
 	}
 }
+
+// The builder is told to follow the project's own instructions, which reach
+// it in its checkout, and that RaisQ's rules win where they conflict.
+func TestPromptPointsAtTheProjectsInstructions(t *testing.T) {
+	p := Prompt(Deps{}, domain.TaskSpec{Title: "T", Criteria: []domain.Criterion{{ID: "c1", Text: "x"}}}, domain.Facts{}, slot.Paths{Out: "/out", Spec: "/spec"}, nil)
+	for _, want := range []string{"AGENTS.md", "CLAUDE.md", "agent skills", "these rules win"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("the prompt should mention %q:\n%s", want, p)
+		}
+	}
+}

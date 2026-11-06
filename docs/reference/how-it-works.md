@@ -42,7 +42,7 @@ RaisQ writes the prompt from files only, with no chat history and no secrets:
 
 - the task's acceptance criteria
 - an index of your facts, one line each, with the full facts mounted read-only for the agent to open as it needs them
-- each plugin's instructions for the agent (`for_ai`)
+- that it follows your project's own instructions, in its `AGENTS.md` or `CLAUDE.md` and its agent skills, as long as they don't conflict with RaisQ's
 - on a retry, the exact failures from the last attempt
 
 The agent works in a container on a clone of your project, then writes `result.json`: *done*, *question*, *needs-something* or *failed*. No `result.json` counts as failed. It also writes the choices it made that the spec didn't cover, which go into the review pack.

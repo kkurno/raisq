@@ -79,6 +79,9 @@ func Contract(ctx context.Context, body, dir string) []string {
 	if len(bad) > 0 {
 		return bad
 	}
+	if err := retired([]byte(body)); err != nil {
+		bad = append(bad, err.Error())
+	}
 	if f.Slot == "checks" {
 		if svc := startsService(f.Run); svc != "" {
 			bad = append(bad, "its run starts a service with "+svc+": a check runs one command of the project's. Put the service in a provider with image:, and name it in needs:")

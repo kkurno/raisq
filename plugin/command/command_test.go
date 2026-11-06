@@ -199,8 +199,9 @@ func TestContractNeverRunsACheck(t *testing.T) {
 }
 
 // A check runs one of the project's commands. One that starts its own
-// containers is refused, pointing to a provider.
-func TestContractRefusesServices(t *testing.T) {
+// containers is refused, pointing to a provider, and so is a file still
+// carrying for_ai, pointing to the project's own instructions.
+func TestContractRefusesServicesAndForAI(t *testing.T) {
 	dir := t.TempDir()
 	for _, run := range []string{
 		`c=$(docker run -d postgres) && pnpm test`,
@@ -218,5 +219,13 @@ func TestContractRefusesServices(t *testing.T) {
 		if bad := Contract(context.Background(), "name: x\nslot: checks\nrun: "+run+"\n", dir); len(bad) != 0 {
 			t.Errorf("%q is an ordinary check: %v", run, bad)
 		}
+	}
+	old := "name: x\nslot: checks\nrun: true\nfor_ai:\n  when: always\n  how: do it\n"
+	if bad := Contract(context.Background(), old, dir); len(bad) == 0 || !strings.Contains(bad[0], "AGENTS.md") {
+		t.Fatalf("for_ai must be refused, saying where it goes: %v", bad)
+	}
+	write(t, dir, "old.yaml", old)
+	if _, err := Load(dir); err == nil {
+		t.Fatal("loading a plugin file with for_ai must fail loudly, not drop it")
 	}
 }

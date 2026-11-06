@@ -29,8 +29,6 @@ type Deps struct {
 	Extractors []slot.Extractor
 	Reports    []slot.Report
 	Sources    []slot.SpecSource
-	// ForAI is every plugin's for_ai block, already rendered.
-	ForAI []string
 	// Manual means a person builds; RaisQ does everything after.
 	Manual   bool
 	Attempts int
@@ -234,7 +232,7 @@ func Run(ctx context.Context, d Deps, task string) (RunRecord, error) {
 				if rErr != nil {
 					return finish(d, task, run, rec, st, domain.Parked, domain.Blocked, rErr.Error(), &ar, nil)
 				}
-				d.Providers, d.Checks, d.ForAI = fresh.Providers, fresh.Checks, fresh.ForAI
+				d.Providers, d.Checks = fresh.Providers, fresh.Checks
 			}
 			if specRev, err = d.Store.PinSpec(task); err != nil {
 				return rec, err

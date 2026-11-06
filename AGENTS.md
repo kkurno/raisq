@@ -49,7 +49,7 @@ These are the point of the project. A change that weakens one is wrong even if e
 - **Settings exist only for real exceptions.** `.raisq/local/config.yaml` names plugins for one-of slots, plus a few defaults. Don't add a setting for something RaisQ can work out, and don't add an allowlist.
 - **Shared or local is one rule.** What judges the work (facts, plugins, rubrics, lessons) is shared and committed. Who runs RaisQ here and work in progress (settings, tasks, runs, snapshots, baselines) go in `.raisq/local/`, which ignores itself. A new file goes in whichever describes it; never add a line to a `.gitignore`.
 - **One word per concept.** Use the terms already in the code: task, run, attempt, handoff, fact, rule, criterion, claim, rubric, check, slot, plugin, provider. Don't introduce synonyms.
-- **Facts say what's true; plugins' `for_ai` says how to use a tool; rubrics say what good looks like; checks are commands.** Don't blur them, such as putting a tool instruction in `facts/`.
+- **Facts say what's true; rubrics say what good looks like; checks are commands; how to work belongs to the project.** The builder follows the project's own `AGENTS.md`, `CLAUDE.md` and agent skills, so RaisQ never carries instructions for it. Don't blur them, such as putting a tool instruction in `facts/`.
 - **A check runs one of the project's commands.** It never starts services or holds a program written for RaisQ: services are providers, and a missing command is a script the project adds.
 - **Comments say why, not what,** in one short line where possible. No references to issues or tickets in comments.
 - **Errors say what to do.** A user reads them in a terminal: name the file, the command, or the fix.

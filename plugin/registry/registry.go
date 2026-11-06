@@ -241,11 +241,6 @@ func (p *Project) Deps(task string, manual bool) (usecase.Deps, error) {
 	for _, f := range p.all("spec-source") {
 		d.Sources = append(d.Sources, command.Source{F: f, Project: p.Dir})
 	}
-	for _, f := range files {
-		if s := f.RenderForAI(); s != "" {
-			d.ForAI = append(d.ForAI, s)
-		}
-	}
 	return d, nil
 }
 
