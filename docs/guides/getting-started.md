@@ -34,7 +34,7 @@ If you see `command not found`, open a new terminal and try again, or follow the
 
 **With Go instead:** `go install github.com/kkurno/raisq/cmd/raisq@latest`. Go puts it in `~/go/bin`, which often isn't on your `PATH`, so add it once: `echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc`, then open a new terminal.
 
-**To update,** run the installer again, or `go install` again if you used Go. `raisq update` prints the line. Then run `raisq skill` in each project, to refresh the chat skill.
+**To update,** run the installer again, or `go install` again if you used Go. `raisq update` prints the line. Then run `raisq init` in each project: it refreshes the chat skill and fills in anything new, and changes nothing you set.
 
 ## 2. Set up your project
 

@@ -111,7 +111,7 @@ func run(ctx context.Context, args []string) error {
 		fmt.Println("  raisq " + version + ". To update, run the installer again:")
 		fmt.Println("    curl -fsSL https://raw.githubusercontent.com/kkurno/raisq/main/install.sh | sh")
 		fmt.Println("  or, if you installed with Go: go install github.com/kkurno/raisq/cmd/raisq@latest")
-		fmt.Println("  Then, in each project: raisq skill, to refresh the chat skill.")
+		fmt.Println("  Then, in each project: raisq init, to refresh the chat skill. It changes nothing you set.")
 		return nil
 	case "version", "--version":
 		fmt.Println("raisq", version)

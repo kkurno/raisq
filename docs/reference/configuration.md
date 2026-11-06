@@ -23,6 +23,8 @@
 
 **Joining a project that uses RaisQ:** after cloning it, run `raisq init`. It sets up only your machine: it finds the agent and container tool you have, writes `local/config.yaml`, and leaves the shared files alone. Until then, every command says to run it.
 
+**`raisq init` is safe to run again,** such as after updating RaisQ. It fills in only what's missing, such as the agents' plugin files or the skill, and refreshes an old skill. It never changes your settings, or a file that's there.
+
 **A project set up before `local/` existed** is moved on the first command: `raisq.yaml` becomes `local/config.yaml`, and tasks, fact history, baselines and the batch report move into `local/`. RaisQ says what it moved. Commit the removals git then shows under `.raisq/`.
 
 ## local/config.yaml
