@@ -46,7 +46,7 @@ tests: ["**/*.test.*", "**/*.spec.*"]
 | `tests` | Globs of this check's test files: restored from before the task, and the ones the agent added are proven |
 | `locks` | Globs of files that configure the check: restored from before the task, so the agent can't loosen it |
 | `needs` | Providers to start first, such as `[site]` |
-| `dir` | The folder it runs in, such as `apps/api` in a monorepo. `tests`, `locks` and `{file}` are then relative to it. |
+| `dir` | The folder it runs in, such as `apps/api` in a monorepo. `tests`, `locks` and `{file}` are then relative to it. If the folder has its own lockfile, RaisQ installs its dependencies there too. |
 | `env` | Settings for the command, such as `{DATABASE_URL: "postgresql://postgres:test@{postgres.host}:{postgres.port}/app"}`. `{name.host}` and `{name.port}` are filled with where a service it needs is. It's committed, so never put a secret here: a secret comes from a provider. |
 
 Every check gets `RAISQ_BASE`, the commit the task started from, so a slow one can narrow itself with its own tool: `turbo run test --filter="...[$RAISQ_BASE]"`. On the run that measures what already failed, it's empty, so the check runs in full.

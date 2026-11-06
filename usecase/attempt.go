@@ -417,7 +417,7 @@ func baseline(ctx context.Context, d Deps, base string) (domain.Baseline, error)
 		return b, err
 	}
 	defer sess.Stop(ctx)
-	if err := install(ctx, sess); err != nil {
+	if err := install(ctx, sess, d.Checks...); err != nil {
 		return b, err
 	}
 	provs := startProviders(ctx, d, sess)
@@ -551,7 +551,7 @@ func attempt(ctx context.Context, d Deps, task, run string, n int, spec domain.T
 
 	// 4. Checks, on tests restored from before the task. Dependencies the
 	// builder didn't install are installed first, so a check can run at all.
-	if err := install(ctx, sess); err != nil {
+	if err := install(ctx, sess, d.Checks...); err != nil {
 		return ar, err
 	}
 	provs := startProviders(ctx, d, sess)
@@ -648,23 +648,64 @@ func providerPorts(d Deps) []int {
 	return ports
 }
 
+// lockfiles say how a folder's dependencies are installed, in order. A folder
+// with node_modules already, such as one the builder installed, is left alone.
+var lockfiles = []struct{ file, cmd string }{
+	{"package-lock.json", "[ -d node_modules ] || npm ci --no-audit --no-fund"},
+	{"pnpm-lock.yaml", "[ -d node_modules ] || pnpm install --frozen-lockfile"},
+	{"yarn.lock", "[ -d node_modules ] || yarn install --frozen-lockfile"},
+	{"bun.lock", "[ -d node_modules ] || (" + bunEnsure + " && bun install --frozen-lockfile)"},
+	{"bun.lockb", "[ -d node_modules ] || (" + bunEnsure + " && bun install --frozen-lockfile)"},
+	{"go.mod", "go mod download"},
+}
+
+// bunEnsure gets bun when the session lacks it, at the version package.json's
+// packageManager names, into the user's own npm folder: corepack, which brings
+// pnpm and yarn, doesn't cover bun.
+const bunEnsure = `command -v bun >/dev/null 2>&1 || npm i -g --no-audit --no-fund "bun@$(node -p "((require('./package.json').packageManager||'').match(/^bun@(.+)$/)||[])[1]||'latest'" 2>/dev/null || echo latest)" >/dev/null`
+
+// InstallCommand is what RaisQ runs to install a folder's dependencies from
+// a lockfile, or "" for one it doesn't know.
+func InstallCommand(lockfile string) string {
+	for _, lf := range lockfiles {
+		if lf.file == lockfile {
+			return lf.cmd
+		}
+	}
+	return ""
+}
+
 // install gets dependencies in, the way the builder would, for sessions that
-// have no builder: the baseline and manual mode.
-func install(ctx context.Context, s slot.Session) error {
-	for _, probe := range []struct{ file, cmd string }{
-		{"package-lock.json", "[ -d node_modules ] || npm ci --no-audit --no-fund"},
-		{"pnpm-lock.yaml", "[ -d node_modules ] || pnpm install --frozen-lockfile"},
-		{"yarn.lock", "[ -d node_modules ] || yarn install --frozen-lockfile"},
-		{"go.mod", "go mod download"},
-	} {
-		if _, err := os.Stat(filepath.Join(hostDir(s), probe.file)); err == nil {
-			if r, err := s.Exec(ctx, probe.cmd, nil); err != nil || r.Exit != 0 {
-				return fmt.Errorf("installing dependencies with `%s` failed:\n%s", probe.cmd, domain.TailLines(r.Output, 10))
+// have no builder, and for checks: at the project's root, and in each folder a
+// check runs in that has its own lockfile, such as a package of a monorepo
+// that isn't part of the root's workspace. Each folder is installed once.
+func install(ctx context.Context, s slot.Session, checks ...slot.Check) error {
+	dirs := []string{""}
+	seen := map[string]bool{"": true}
+	for _, c := range checks {
+		if d, ok := c.(slot.Direr); ok && !seen[d.Dir()] {
+			seen[d.Dir()] = true
+			dirs = append(dirs, d.Dir())
+		}
+	}
+	for _, dir := range dirs {
+		for _, lf := range lockfiles {
+			if _, err := os.Stat(filepath.Join(hostDir(s), dir, lf.file)); err != nil {
+				continue
+			}
+			cmd := lf.cmd
+			if dir != "" {
+				cmd = "cd " + shellQuote(dir) + " && " + cmd
+			}
+			if r, err := s.Exec(ctx, cmd, nil); err != nil || r.Exit != 0 {
+				return fmt.Errorf("installing dependencies with `%s` failed:\n%s", cmd, domain.TailLines(r.Output, 10))
 			}
 		}
 	}
 	return nil
 }
+
+func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
 // hostDir is where the checkout is on the host. Sessions mount it at a guest
 // path, so the host side is what the request was made with.

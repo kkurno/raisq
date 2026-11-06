@@ -533,3 +533,41 @@ func TestPromptPointsAtTheProjectsInstructions(t *testing.T) {
 		}
 	}
 }
+
+// Dependencies are installed at the root and in each folder a check runs in
+// that has its own lockfile, once each, so a check never installs them itself.
+func TestInstallEachChecksFolder(t *testing.T) {
+	dir := t.TempDir()
+	for _, f := range []string{"pnpm-lock.yaml", "apps/auth/bun.lock", "apps/web/package.json"} {
+		write(t, dir, f, "")
+	}
+	write(t, dir, "apps/auth/node_modules/.keep", "")
+	s, _ := fake.Isolation{}.Start(context.Background(), slot.StartRequest{Checkout: dir, OutDir: t.TempDir()})
+	sess := s.(*fake.Session)
+	checks := []slot.Check{
+		fake.Check{CheckName: "auth", In: "apps/auth"},
+		fake.Check{CheckName: "auth-again", In: "apps/auth"},
+		fake.Check{CheckName: "web", In: "apps/web"},
+		fake.Check{CheckName: "root"},
+	}
+	// The fake session has no pnpm, so a root install fails: what matters is
+	// what was asked for.
+	_ = install(context.Background(), sess, checks...)
+	ran := strings.Join(sess.Ran, "\n")
+	if !strings.Contains(ran, "pnpm install --frozen-lockfile") {
+		t.Errorf("the root's lockfile is installed:\n%s", ran)
+	}
+	sess.Ran = nil
+	write(t, dir, "node_modules/.keep", "")
+	must(t, install(context.Background(), sess, checks...))
+	ran = strings.Join(sess.Ran, "\n")
+	if n := strings.Count(ran, "cd 'apps/auth' && "); n != 1 {
+		t.Errorf("a package with its own lockfile is installed once, in its folder; got %d:\n%s", n, ran)
+	}
+	if !strings.Contains(ran, "bun install --frozen-lockfile") {
+		t.Errorf("bun's lockfile is recognised:\n%s", ran)
+	}
+	if strings.Contains(ran, "apps/web") {
+		t.Errorf("a folder with no lockfile of its own installs nothing:\n%s", ran)
+	}
+}

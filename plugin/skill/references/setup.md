@@ -60,7 +60,9 @@ The fields that protect the project, and must be right:
 
 Also:
 
-- **Setup goes in `run`,** such as `prisma generate`. RaisQ installs dependencies itself from the lockfile (npm, pnpm, yarn, Go), with the Node version and package manager the project names.
+- **Never install dependencies in a check.** RaisQ does it before the checks run, once per folder: at the project's root, and in each check's `dir` that has its own lockfile, such as a package outside the root's workspace. It knows npm, pnpm, yarn, bun and Go, with the Node version and package manager version the project names. If a package uses one RaisQ doesn't know, tell the user rather than putting an install in `run`.
+- **Other setup goes in `run`,** before the command, such as `prisma generate && …`.
+- **`run_one` runs the test tool on `{file}`,** such as `bun test {file}` or `pnpm exec jest {file}`, since projects rarely have a script for one file. Nothing else: no install, no setup the check's `run` already does.
 - **A slow check can narrow itself** with `$RAISQ_BASE`, the commit the task started from: `turbo run test --filter="...[$RAISQ_BASE]"`. It's empty on the run that measures what already failed, so the check must still work in full without it. RaisQ runs every check either way.
 - **Leave out** checks that test a deployed site rather than the code, need real credentials, or deploy, publish or push anything.
 - **`env` is committed,** so never put a secret in it. A secret goes in a provider with `from: host:<file>`, read on the user's machine and given to the checks only, after the builder has exited.

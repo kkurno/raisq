@@ -61,7 +61,7 @@ func TrialChecks(ctx context.Context, d Deps, checks []slot.Check) (map[string]T
 		}
 		return out
 	}
-	if err := install(ctx, sess); err != nil {
+	if err := install(ctx, sess, checks...); err != nil {
 		return blockAll(err.Error()), nil
 	}
 	provs := startProviders(ctx, trial, sess)

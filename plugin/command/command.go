@@ -153,6 +153,14 @@ func (c Check) inDir(globs []string) []string {
 
 func (c Check) dir() string { return path.Clean(strings.Trim(c.F.Dir, "/")) }
 
+// Dir is the folder the check runs in, relative to the project; "" is the root.
+func (c Check) Dir() string {
+	if c.F.Dir == "" {
+		return ""
+	}
+	return c.dir()
+}
+
 // command runs line in the check's dir.
 func (c Check) command(line string) string {
 	if c.F.Dir == "" {

@@ -11,6 +11,7 @@ import (
 
 	loginpkg "github.com/kkurno/raisq/plugin/login"
 	"github.com/kkurno/raisq/slot"
+	"github.com/kkurno/raisq/usecase"
 )
 
 // TestIsolation needs a running Docker; it's skipped without one.
@@ -152,5 +153,33 @@ func TestServiceBesideTheSession(t *testing.T) {
 	}
 	if exec.Command("docker", "network", "inspect", network).Run() == nil {
 		t.Fatal("the session's network must go with it")
+	}
+}
+
+// A package that uses bun gets bun in the container, at the version its
+// packageManager names, through the command RaisQ runs for bun.lock.
+func TestBunFromThePackage(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	ctx := context.Background()
+	d := New("node:22-bookworm")
+	if err := d.Available(ctx); err != nil {
+		t.Skip(err)
+	}
+	work := t.TempDir()
+	os.WriteFile(filepath.Join(work, "package.json"), []byte(`{"name":"auth","packageManager":"bun@1.1.38"}`), 0o644)
+	os.WriteFile(filepath.Join(work, "bun.lock"), []byte(`{"lockfileVersion":1,"workspaces":{"":{"name":"auth"}},"packages":{}}`), 0o644)
+	s, err := d.Start(ctx, slot.StartRequest{Checkout: work, OutDir: t.TempDir(), Label: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop(ctx)
+	if r, err := s.Exec(ctx, usecase.InstallCommand("bun.lock"), nil); err != nil || r.Exit != 0 {
+		t.Fatalf("installing with bun: %v %+v", err, r)
+	}
+	r, err := s.Exec(ctx, "bun --version", nil)
+	if err != nil || r.Exit != 0 || !strings.Contains(r.Output, "1.1.38") {
+		t.Fatalf("want bun 1.1.38 in the container, got %v %+v", err, r)
 	}
 }

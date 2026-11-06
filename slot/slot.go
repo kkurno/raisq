@@ -134,6 +134,12 @@ type Address struct {
 	Port int
 }
 
+// Direr is a check that runs in a folder of the project, such as one package
+// of a monorepo, so its dependencies are installed there too.
+type Direr interface {
+	Dir() string
+}
+
 // Needer is an extractor that needs a provider started first, as a check does.
 type Needer interface {
 	Needs() []string

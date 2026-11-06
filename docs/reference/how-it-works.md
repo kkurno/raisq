@@ -55,6 +55,7 @@ RaisQ checks the clone's own git hooks and config are unchanged, and that every 
 
 Every check runs on the result:
 
+- **Dependencies are installed first,** once per folder, from its lockfile (npm, pnpm, yarn, bun or Go): at the root, and in each check's folder that has its own. A check never installs anything itself.
 - **Existing tests run as they were before the task.** RaisQ restores each check's test files and config from the commit the task started from, so editing them changes nothing.
 - **A new test counts only once it's proven.** RaisQ runs it on the new code, where it must pass, and on the old code, where it must fail. A test that passes on both tests nothing and is reported.
 - **Old failures don't count.** What already failed on the base commit is measured once and subtracted.

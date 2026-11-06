@@ -105,7 +105,11 @@ type Check struct {
 	TestGlob  []string
 	OneCmd    string // with {file}
 	Need      []string
+	// In is the folder it runs in, for a check in one package of a monorepo.
+	In string
 }
+
+func (c Check) Dir() string { return c.In }
 
 func (c Check) Name() string    { return c.CheckName }
 func (c Check) Priority() int   { return 0 }
