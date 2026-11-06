@@ -38,10 +38,9 @@ If you see `command not found`, open a new terminal and try again, or follow the
 
 ## 2. Set up your project
 
-Go to your project's folder and run:
+In your project's folder, run:
 
 ```
-cd my-website
 raisq init
 ```
 

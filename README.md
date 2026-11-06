@@ -76,17 +76,23 @@ RaisQ is built on a few ideas. They're why you can trust what it hands you.
 
 RaisQ runs on macOS and Linux. You need [git](https://git-scm.com), [Docker](https://www.docker.com/get-started/), and an AI coding agent with a command-line tool, logged in. RaisQ works with any agent; [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Cursor](https://cursor.com/cli) are the ones tested so far, and [any other can be added](docs/reference/plugins.md#builder).
 
-Install RaisQ, then set up your project from its folder:
+**1. Install RaisQ:**
 
 ```
 curl -fsSL https://raw.githubusercontent.com/kkurno/raisq/main/install.sh | sh
-cd my-project
-raisq init
 ```
 
 The installer puts `raisq` in a folder that's already on your `PATH`, so it works straight away. Run it again to update. To install with Go instead, see [installing](docs/guides/getting-started.md#1-install-raisq).
 
-`raisq init` finds your agent and container tool. Then teach RaisQ how your project is checked, from your agent's chat (with Claude Code, run `raisq skill claude-code` first):
+**2. Set up RaisQ in your project's folder:**
+
+```
+raisq init
+```
+
+It finds your agent and container tool.
+
+**3. Teach RaisQ how your project is checked,** from your agent's chat (with Claude Code, run `raisq skill claude-code` first):
 
 ```
 /raisq set up this project
