@@ -77,7 +77,7 @@ The limit is when the batch stops *starting* tasks. A task that's already runnin
 
 A batch is one command, so `cron` or any scheduler can start it, on a machine that keeps its state between runs, such as one you leave on overnight. Its tasks, runs and `raisq/<task>` branches live on that machine, and RaisQ never pushes them, so a throwaway CI job would lose the work when it ends.
 
-On a machine that only exists to run batches, `raisq config isolation none --yes` skips Docker. Only do this on a machine you're happy to throw away, because the builder AI then runs directly on it. Every review pack says when this was the case.
+On a machine that only exists to run batches, `raisq config isolation none --yes` runs the builder and the checks directly on it, without a container. Only do this on a machine you're happy to throw away, because the builder AI then has access to everything on it. Services the checks need still run in containers, so Docker or Podman is still needed if your checks use one. Every review pack says when this was the case.
 
 ## Tips
 

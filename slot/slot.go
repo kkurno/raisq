@@ -113,10 +113,25 @@ type Extractor interface {
 }
 
 // Servicer is a session that can start a service container beside it, such as
-// a database for the checks. The service is reachable by name from the
-// session, and stops with it.
+// a database for the checks. It returns where the session reaches it, which
+// depends on the isolation, and the service stops with the session.
 type Servicer interface {
-	Service(ctx context.Context, name, image string, env map[string]string) error
+	Service(ctx context.Context, req ServiceRequest) (Address, error)
+}
+
+// ServiceRequest is a service to start from an image.
+type ServiceRequest struct {
+	Name  string
+	Image string
+	Env   map[string]string
+	// Port is the port the service listens on inside its container.
+	Port int
+}
+
+// Address is where a session reaches a service.
+type Address struct {
+	Host string
+	Port int
 }
 
 // Needer is an extractor that needs a provider started first, as a check does.

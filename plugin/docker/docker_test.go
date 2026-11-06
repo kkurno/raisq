@@ -127,8 +127,12 @@ func TestServiceBesideTheSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	sess := s.(*Session)
-	if err := sess.Service(ctx, "cache", "redis:7-alpine", nil); err != nil {
+	addr, err := sess.Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if addr.Host != "cache" || addr.Port != 6379 {
+		t.Fatalf("in a container, a service is at its name and own port: %+v", addr)
 	}
 	ok := false
 	for i := 0; i < 30 && !ok; i++ {

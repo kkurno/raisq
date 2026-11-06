@@ -46,6 +46,9 @@ func Contract(ctx context.Context, body, dir string) []string {
 		if f.Image != "" && f.For == "builder" {
 			bad = append(bad, "a service (image:) is for the checks, never the builder")
 		}
+		if f.Image != "" && f.Port == 0 {
+			bad = append(bad, "a service (image:) needs port: the port it listens on, so the checks can reach it with any isolation")
+		}
 		if f.For == "builder" && (f.From == "" || !strings.HasSuffix(f.From, ":ro")) {
 			bad = append(bad, "a builder provider is a read-only mount: from: host:<path>:ro")
 		}

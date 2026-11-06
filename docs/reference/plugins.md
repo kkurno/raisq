@@ -47,7 +47,7 @@ tests: ["**/*.test.*", "**/*.spec.*"]
 | `locks` | Globs of files that configure the check: restored from before the task, so the agent can't loosen it |
 | `needs` | Providers to start first, such as `[site]` |
 | `dir` | The folder it runs in, such as `apps/api` in a monorepo. `tests`, `locks` and `{file}` are then relative to it. |
-| `env` | Settings for the command, such as `{DATABASE_URL: postgresql://postgres:test@postgres:5432/app}`. It's committed, so never put a secret here: a secret comes from a provider. |
+| `env` | Settings for the command, such as `{DATABASE_URL: "postgresql://postgres:test@{postgres.host}:{postgres.port}/app"}`. `{name.host}` and `{name.port}` are filled with where a service it needs is. It's committed, so never put a secret here: a secret comes from a provider. |
 
 Every check gets `RAISQ_BASE`, the commit the task started from, so a slow one can narrow itself with its own tool: `turbo run test --filter="...[$RAISQ_BASE]"`. On the run that measures what already failed, it's empty, so the check runs in full.
 
@@ -61,7 +61,7 @@ run: pnpm exec prisma generate && pnpm exec jest
 run_one: pnpm exec jest {file}
 tests: ["**/*.spec.ts"]
 locks: ["jest.config.*"]
-env: {DATABASE_URL: "postgresql://postgres:test@postgres:5432/app"}
+env: {DATABASE_URL: "postgresql://postgres:test@{postgres.host}:{postgres.port}/app"}
 needs: [postgres]
 ```
 
@@ -111,11 +111,12 @@ A service in its own container, such as a database, started beside the checks af
 name: postgres
 slot: provides
 image: postgres:16
+port: 5432
 env: {POSTGRES_PASSWORD: test, POSTGRES_DB: app}
-ready: pg_isready -h postgres
+ready: pg_isready -h {postgres.host} -p {postgres.port}
 ```
 
-The checks reach it at the provider's name, here `postgres`, so a check's `env` can point at it, as `api-test` above does. It's stopped with the attempt, and only the checks can reach it. It needs Docker or Podman; with `isolation: none`, a check that needs it is blocked.
+Where the checks reach it depends on the isolation. With `docker` or `podman`, it's on a private network with the checks' container, at its name and own port. With `isolation: none`, it runs through the host's Docker or Podman, published on a free port of `127.0.0.1` only. So a check's `env` and `ready` say `{postgres.host}` and `{postgres.port}`, as `api-test` above does, and RaisQ fills them in: the same file works for every teammate, whatever their isolation. It's stopped and removed with the attempt. It always needs Docker or Podman; with neither running, the checks that need it are blocked, saying so.
 
 A secret for the checks only, read on your machine and given to the checks as environment after the agent has exited:
 

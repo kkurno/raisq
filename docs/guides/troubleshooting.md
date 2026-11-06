@@ -14,7 +14,7 @@ It checks your setup and says what's wrong. Most problems are one of these.
 
 Docker isn't started. Open Docker Desktop, or run `sudo systemctl start docker` on Linux, then try again.
 
-RaisQ needs Docker or Podman for everything, including checking a change you made yourself, because the checks run in the container too. To use Podman: `raisq config isolation podman`. On a machine you're happy to throw away, `raisq config isolation none` runs everything directly on it instead.
+RaisQ needs Docker or Podman for everything, including checking a change you made yourself, because the checks run in the container too. To use Podman: `raisq config isolation podman`. On a machine you're happy to throw away, `raisq config isolation none` runs the builder and checks directly on it instead; services the checks need, such as a database, still need Docker or Podman.
 
 **"not logged in on this machine"**
 

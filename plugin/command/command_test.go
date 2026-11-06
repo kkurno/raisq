@@ -164,13 +164,46 @@ func TestCheckInADir(t *testing.T) {
 	}
 }
 
-// A service the checks need, where the isolation can't start one, blocks with
-// what to do; it never quietly runs the checks without it.
-func TestServiceNeedsAContainerTool(t *testing.T) {
+// servicing is a session that starts services, reporting an address the way
+// isolation: none does: on the host, at a port it picked.
+type servicing struct {
+	slot.Session
+	asked slot.ServiceRequest
+}
+
+func (s *servicing) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+	s.asked = req
+	return slot.Address{Host: "127.0.0.1", Port: 54321}, nil
+}
+
+// Where a check reaches a service depends on the isolation, so one plugin
+// file works in both: {name.host} and {name.port} in a check's env and in
+// ready are filled from what the session reports.
+func TestServiceAddressReachesTheChecks(t *testing.T) {
+	sess := &servicing{Session: session(t)}
+	p := Provider{F: File{Name: "postgres", Slot: "provides", Image: "postgres:16", Port: 5432,
+		Ready: "test {postgres.host}:{postgres.port} = 127.0.0.1:54321"}}
+	env, err := p.Start(context.Background(), sess)
+	if err != nil {
+		t.Fatalf("ready should see the filled address: %v", err)
+	}
+	if sess.asked.Port != 5432 || sess.asked.Image != "postgres:16" {
+		t.Fatalf("the service is asked for with its image and port: %+v", sess.asked)
+	}
+	c := Check{F: File{Name: "api-test", Slot: "checks", Needs: []string{"postgres"},
+		Env: map[string]string{"DATABASE_URL": "postgresql://u:p@{postgres.host}:{postgres.port}/app"},
+		Run: `[ "$DATABASE_URL" = "postgresql://u:p@127.0.0.1:54321/app" ]`}}
+	if r := c.Run(context.Background(), sess, env); r.Status != domain.CheckPass {
+		t.Fatalf("the check's env gets the service's address: %+v", r)
+	}
+}
+
+// A service where the isolation can't start one blocks, never quietly runs
+// the checks without it.
+func TestServiceWithoutServicerBlocks(t *testing.T) {
 	p := Provider{F: File{Name: "postgres", Slot: "provides", Image: "postgres:16"}}
-	_, err := p.Start(context.Background(), session(t))
-	if err == nil || !strings.Contains(err.Error(), "docker or podman") {
-		t.Fatalf("want an error saying what to use, got %v", err)
+	if _, err := p.Start(context.Background(), session(t)); err == nil || !strings.Contains(err.Error(), "can't start") {
+		t.Fatalf("want an error saying it can't start, got %v", err)
 	}
 }
 
@@ -219,6 +252,9 @@ func TestContractRefusesServicesAndForAI(t *testing.T) {
 		if bad := Contract(context.Background(), "name: x\nslot: checks\nrun: "+run+"\n", dir); len(bad) != 0 {
 			t.Errorf("%q is an ordinary check: %v", run, bad)
 		}
+	}
+	if bad := Contract(context.Background(), "name: db\nslot: provides\nimage: postgres:16\n", dir); len(bad) == 0 || !strings.Contains(bad[0], "port") {
+		t.Errorf("a service without port: can't be reached with isolation none: %v", bad)
 	}
 	old := "name: x\nslot: checks\nrun: true\nfor_ai:\n  when: always\n  how: do it\n"
 	if bad := Contract(context.Background(), old, dir); len(bad) == 0 || !strings.Contains(bad[0], "AGENTS.md") {

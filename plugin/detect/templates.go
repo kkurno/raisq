@@ -87,10 +87,13 @@ description: <what it gives the checks>
 # Started only when a check names it in needs:, after the builder has exited.
 # Keep one of these three, and delete the others.
 #
-# 1. A service in its own container, reachable from the checks at its name:
+# 1. A service in its own container, for the checks:
 image: <image and version, such as postgres:16>
+# The port it listens on inside its container.
+port: <port, such as 5432>
 env: {<NAME>: <value>}
-ready: <a command that exits 0 when it's ready, such as pg_isready -h %s>
+# {%s.host} and {%s.port} are where the checks reach it, filled in by RaisQ.
+ready: <a command that exits 0 when it's ready, such as pg_isready -h {%s.host} -p {%s.port}>
 #
 # 2. The project's own app, started in the checks' container:
 # run: <command that starts it>

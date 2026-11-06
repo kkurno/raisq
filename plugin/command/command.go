@@ -10,7 +10,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -201,7 +203,7 @@ func (c Check) once(ctx context.Context, s slot.Session, env map[string]string, 
 	if len(c.F.Env) > 0 {
 		merged := map[string]string{}
 		for k, v := range c.F.Env {
-			merged[k] = v
+			merged[k] = fillServices(v, c.F.Needs, env)
 		}
 		// What a provider injects, such as a test secret, wins.
 		for k, v := range env {
@@ -324,22 +326,28 @@ func (p Provider) Start(ctx context.Context, s slot.Session) (map[string]string,
 			}
 		}
 	}
+	ready := p.F.Ready
 	if p.F.Image != "" {
 		sv, ok := s.(slot.Servicer)
 		if !ok {
-			return nil, fmt.Errorf("%s needs a service container (image: %s), and this isolation can't start one: use docker or podman", p.F.Name, p.F.Image)
+			return nil, fmt.Errorf("%s needs a service container (image: %s), and this isolation can't start one", p.F.Name, p.F.Image)
 		}
-		if err := sv.Service(ctx, p.F.Name, p.F.Image, p.F.Env); err != nil {
+		addr, err := sv.Service(ctx, slot.ServiceRequest{Name: p.F.Name, Image: p.F.Image, Env: p.F.Env, Port: p.F.Port})
+		if err != nil {
 			return nil, err
 		}
+		// Where the checks reach it differs by isolation, so they get it as
+		// {name.host} and {name.port}, and so does ready.
+		env[envKey(p.F.Name, "HOST")], env[envKey(p.F.Name, "PORT")] = addr.Host, strconv.Itoa(addr.Port)
+		ready = Fill(ready, p.F.Name, addr)
 	}
 	if p.F.Run != "" {
 		if err := s.Background(ctx, p.F.Run, env); err != nil {
 			return nil, err
 		}
 	}
-	if p.F.Ready != "" {
-		if err := waitReady(ctx, s, p.F.Ready); err != nil {
+	if ready != "" {
+		if err := waitReady(ctx, s, ready); err != nil {
 			return nil, err
 		}
 	}
@@ -348,6 +356,33 @@ func (p Provider) Start(ctx context.Context, s slot.Session) (map[string]string,
 
 // waitReady waits until ready answers: a URL that responds, or a command that
 // exits 0, such as a database's own readiness probe.
+// envKey is the variable a service's host or port is passed in, such as
+// RAISQ_POSTGRES_HOST.
+func envKey(name, part string) string {
+	up := strings.ToUpper(regexp.MustCompile(`[^A-Za-z0-9]+`).ReplaceAllString(name, "_"))
+	return "RAISQ_" + up + "_" + part
+}
+
+// fillServices puts the address of each service a check needs into v, from
+// what its provider reported.
+func fillServices(v string, needs []string, env map[string]string) string {
+	for _, n := range needs {
+		host, port := env[envKey(n, "HOST")], env[envKey(n, "PORT")]
+		if host == "" {
+			continue
+		}
+		p, _ := strconv.Atoi(port)
+		v = Fill(v, n, slot.Address{Host: host, Port: p})
+	}
+	return v
+}
+
+// Fill puts a service's address into s wherever it says {name.host} or
+// {name.port}.
+func Fill(s, name string, addr slot.Address) string {
+	return strings.NewReplacer("{"+name+".host}", addr.Host, "{"+name+".port}", strconv.Itoa(addr.Port)).Replace(s)
+}
+
 func waitReady(ctx context.Context, s slot.Session, ready string) error {
 	probe := ready
 	if strings.HasPrefix(ready, "http://") || strings.HasPrefix(ready, "https://") {

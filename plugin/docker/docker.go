@@ -324,32 +324,34 @@ func (s *Session) URL(port int) (string, error) {
 	return "http://" + addr, nil
 }
 
-// Service starts a container from image beside the session, reachable from it
-// at host name. It runs only after the builder has exited, as every provider
-// does, and stops with the session.
-func (s *Session) Service(ctx context.Context, name, image string, env map[string]string) error {
+// Service starts a container from an image beside the session, on a private
+// network, reachable from the session at its name and its own port. It runs
+// only after the builder has exited, as every provider does, and stops with
+// the session.
+func (s *Session) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+	name := req.Name
 	if s.net == "" {
 		s.net = s.name + "-net"
 		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "create", s.net).CombinedOutput(); err != nil {
 			s.net = ""
-			return fmt.Errorf("making a network for %s: %s", name, strings.TrimSpace(string(out)))
+			return slot.Address{}, fmt.Errorf("making a network for %s: %s", name, strings.TrimSpace(string(out)))
 		}
 		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "connect", s.net, s.name).CombinedOutput(); err != nil {
-			return fmt.Errorf("joining the network for %s: %s", name, strings.TrimSpace(string(out)))
+			return slot.Address{}, fmt.Errorf("joining the network for %s: %s", name, strings.TrimSpace(string(out)))
 		}
 	}
 	cname := s.name + "-" + sanitize(name)
 	args := []string{"run", "-d", "--rm", "--name", cname, "--network", s.net, "--network-alias", name,
 		"--security-opt", "no-new-privileges"}
-	for k, v := range env {
+	for k, v := range req.Env {
 		args = append(args, "-e", k+"="+v)
 	}
-	args = append(args, image)
+	args = append(args, req.Image)
 	if out, err := exec.CommandContext(ctx, s.d.Bin, args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("starting %s (%s): %s", name, image, strings.TrimSpace(string(out)))
+		return slot.Address{}, fmt.Errorf("starting %s (%s): %s", name, req.Image, strings.TrimSpace(string(out)))
 	}
 	s.svcs = append(s.svcs, cname)
-	return nil
+	return slot.Address{Host: name, Port: req.Port}, nil
 }
 
 func (s *Session) Stop(ctx context.Context) error {

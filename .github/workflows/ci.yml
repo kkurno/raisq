@@ -20,7 +20,7 @@ jobs:
       - run: go vet ./...
       # arch_test.go fails the build on any import pointing outwards.
       - run: go test ./...
-      - run: RAISQ_DOCKER_TEST=1 go test ./plugin/docker
+      - run: RAISQ_DOCKER_TEST=1 go test ./plugin/docker ./plugin/registry
       # Release binaries are built by release.yml; this only checks every
       # platform still compiles.
       - run: |

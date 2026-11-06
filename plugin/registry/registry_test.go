@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/kkurno/raisq/plugin/command"
+	"github.com/kkurno/raisq/slot"
 )
 
 // Every folder raisq skill can write to is kept from the builder, including
@@ -358,5 +359,44 @@ func TestWarnsWhenTestsArentProtected(t *testing.T) {
 	c := Candidate{File: command.File{Slot: "checks", Dir: "apps/api", Tests: []string{"**/*.spec.ts"}, Locks: []string{"jest.config.*"}}}
 	if got := strings.Join(c.Protects(), " "); got != "apps/api/**/*.spec.ts apps/api/jest.config.*" {
 		t.Fatalf("protects is relative to the project: %s", got)
+	}
+}
+
+// With isolation: none, a service still runs in a container through the
+// host's Docker; with no Docker, it says so instead of running checks
+// without it.
+func TestLocalServiceNeedsAContainerTool(t *testing.T) {
+	saved := containerTool
+	containerTool = func() string { return "" }
+	defer func() { containerTool = saved }()
+	s, _ := Local{}.Start(context.Background(), slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir()})
+	_, err := s.(slot.Servicer).Service(context.Background(), slot.ServiceRequest{Name: "postgres", Image: "postgres:16", Port: 5432})
+	if err == nil || !strings.Contains(err.Error(), "Docker or Podman") {
+		t.Fatalf("want an error saying to start Docker, got %v", err)
+	}
+}
+
+// With isolation: none, a provider's container runs on the host's Docker, on
+// a local port only, reachable from the host session, and gone at the end.
+func TestLocalServiceOnHostDocker(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	if containerTool() == "" {
+		t.Skip("no Docker or Podman running")
+	}
+	ctx := context.Background()
+	s, _ := Local{}.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir()})
+	addr, err := s.(slot.Servicer).Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addr.Host != "127.0.0.1" || addr.Port == 0 || addr.Port == 6379 {
+		t.Fatalf("on the host, a service is on a local port RaisQ picked: %+v", addr)
+	}
+	name := s.(*localSession).svcs[0][1]
+	s.Stop(ctx)
+	if exec.Command("docker", "inspect", name).Run() == nil {
+		t.Fatal("the service must be removed when the session stops")
 	}
 }

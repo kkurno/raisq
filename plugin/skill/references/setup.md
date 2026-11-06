@@ -15,7 +15,7 @@ RaisQ doesn't tell the builder how to work in the project. The builder follows t
 
 ## Steps
 
-0. **Check the machine first:** `raisq doctor`. RaisQ needs Docker or Podman running, both for the builder and for the services checks need. If it reports a problem, tell the user and stop until it's fixed. Never change `isolation` to get past it: `isolation: none` runs the builder directly on the user's machine, and is the user's decision alone.
+0. **Check the machine first:** `raisq doctor`, and `raisq config` for this machine's settings. If doctor reports a problem, tell the user and stop until it's fixed. `isolation` is the user's choice: don't change it without asking. With `docker` or `podman`, the builder and the checks run in a container. With `none`, they run directly on the machine, and a provider's service still runs in a container through the host's Docker or Podman, which must be running.
 1. **Read how the project already checks itself.** Read only committed files (`git ls-files` lists them); never open `.env`, `credentials/` or anything else that holds a secret. In this order:
    - CI: `.github/workflows/*.yml`, `.gitlab-ci.yml`, `.circleci/`, `Jenkinsfile`. This is the best source: it shows each check and the setup it needs.
    - `package.json` scripts, in each package of a monorepo (`pnpm-workspace.yaml`, `workspaces`, `turbo.json`, `nx.json` list them), `Makefile`, `go.mod`, `pyproject.toml`, `Cargo.toml`.
@@ -47,7 +47,7 @@ run: pnpm exec prisma generate && pnpm exec jest
 run_one: pnpm exec jest {file} # runs one test file
 tests: ["**/*.spec.ts"]        # this check's test files
 locks: ["jest.config.*", "test-utils/**"]
-env: {DATABASE_URL: "postgresql://postgres:test@postgres:5432/app"}
+env: {DATABASE_URL: "postgresql://postgres:test@{postgres.host}:{postgres.port}/app"}
 needs: [postgres]
 priority: 20                   # lower runs first: build 10, lint and types 15, tests 20, e2e 30
 ```
@@ -73,9 +73,12 @@ A service in its own container, beside the checks, reachable at its name:
 name: postgres
 slot: provides
 image: postgres:16             # the version the project uses, from docker-compose.yml or CI
+port: 5432                     # the port it listens on inside its container
 env: {POSTGRES_PASSWORD: test, POSTGRES_DB: app}
-ready: pg_isready -h postgres  # a command that exits 0, or a URL, when it's ready
+ready: pg_isready -h {postgres.host} -p {postgres.port}   # a command that exits 0, or a URL
 ```
+
+Where the checks reach a service depends on the machine's `isolation`: at its name in a container, or at `127.0.0.1` and a port RaisQ picks with `none`. So never write the address yourself: write `{postgres.host}` and `{postgres.port}`, in a check's `env` and in `ready`, and RaisQ fills them in. The same files then work for everyone on the team, whatever each person's isolation.
 
 The project's own app, started in the checks' container, for checks that test it running:
 
@@ -130,7 +133,7 @@ raisq fact add orders/minimum --gap
 
 - **passes:** it will catch a task that breaks it. Good.
 - **already fails before any task:** it can't catch anything yet, because RaisQ only counts new failures. Read its output. Usually setup is missing: a client to generate, a service to start, an environment variable. Fix the draft and add it again. If the project really is failing there, tell the user: they may want to fix the project first, or add the check anyway and know it protects nothing yet.
-- **blocked:** a tool or something it needs isn't there, such as a provider that never became ready. Every task would be blocked by it, so fix it before adding. If a provider can't start because Docker or Podman isn't running, or the machine runs with `isolation: none`, tell the user and stop. Don't work around it by starting services in the check.
+- **blocked:** a tool or something it needs isn't there, such as a provider that never became ready. Every task would be blocked by it, so fix it before adding. If a provider can't start because Docker or Podman isn't running, tell the user and stop. Don't work around it by starting services in the check.
 
 Nothing is added until the command runs with `--yes`, which you do only after the user has seen these results and agreed.
 

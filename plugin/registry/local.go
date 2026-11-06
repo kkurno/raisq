@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/kkurno/raisq/plugin/proc"
 	"github.com/kkurno/raisq/slot"
 )
 
-// Local runs sessions on the host, for `isolation: none` on a machine that's
-// disposable anyway. It's recorded on every review pack.
+// Local runs sessions on the host, for `isolation: none`, a person's choice.
+// It's recorded on every review pack. A service the checks need still runs in
+// a container, through the host's Docker or Podman when there's one.
 type Local struct{}
 
 func (Local) Name() string                        { return "none" }
@@ -29,6 +32,54 @@ type localSession struct {
 	paths slot.Paths
 	mu    sync.Mutex
 	bg    []*exec.Cmd
+	// svcs are service containers this session started: tool and name.
+	svcs [][2]string
+}
+
+// containerTool is the host's Docker or Podman, or "" with neither.
+var containerTool = func() string {
+	for _, bin := range []string{"docker", "podman"} {
+		if _, err := exec.LookPath(bin); err == nil {
+			if exec.Command(bin, "info").Run() == nil {
+				return bin
+			}
+		}
+	}
+	return ""
+}
+
+// Service starts a container from an image on the host, its port published
+// on a free port of 127.0.0.1 only, and removed when the session stops.
+func (s *localSession) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+	bin := containerTool()
+	if bin == "" {
+		return slot.Address{}, fmt.Errorf("%s needs Docker or Podman to start its container (%s), and neither is running here. Start one, or remove the checks that need it", req.Name, req.Image)
+	}
+	if req.Port == 0 {
+		return slot.Address{}, fmt.Errorf("%s needs port: the port %s listens on, so the checks can reach it", req.Name, req.Image)
+	}
+	name := fmt.Sprintf("raisq-%s-%d", req.Name, os.Getpid())
+	args := []string{"run", "-d", "--rm", "--name", name, "-p", fmt.Sprintf("127.0.0.1::%d", req.Port), "--security-opt", "no-new-privileges"}
+	for k, v := range req.Env {
+		args = append(args, "-e", k+"="+v)
+	}
+	args = append(args, req.Image)
+	if out, err := exec.CommandContext(ctx, bin, args...).CombinedOutput(); err != nil {
+		return slot.Address{}, fmt.Errorf("starting %s (%s): %s", req.Name, req.Image, strings.TrimSpace(string(out)))
+	}
+	s.mu.Lock()
+	s.svcs = append(s.svcs, [2]string{bin, name})
+	s.mu.Unlock()
+	out, err := exec.CommandContext(ctx, bin, "port", name, fmt.Sprintf("%d/tcp", req.Port)).Output()
+	if err != nil {
+		return slot.Address{}, fmt.Errorf("finding %s's port: %w", req.Name, err)
+	}
+	_, port, ok := strings.Cut(strings.TrimSpace(strings.Split(string(out), "\n")[0]), ":")
+	n, perr := strconv.Atoi(port)
+	if !ok || perr != nil {
+		return slot.Address{}, fmt.Errorf("finding %s's port: unexpected %q", req.Name, out)
+	}
+	return slot.Address{Host: "127.0.0.1", Port: n}, nil
 }
 
 func (s *localSession) Paths() slot.Paths { return s.paths }
@@ -73,6 +124,9 @@ func (s *localSession) Stop(ctx context.Context) error {
 		if c.Process != nil {
 			c.Process.Kill()
 		}
+	}
+	for _, svc := range s.svcs {
+		_ = exec.Command(svc[0], "rm", "-f", svc[1]).Run()
 	}
 	return nil
 }

@@ -53,7 +53,7 @@ RaisQ exists because an AI's work isn't trusted until it's checked. You're an AI
 - **Never build the task yourself.** The builder AI does the work in a sealed container, and RaisQ checks it there. Don't edit the project's code for a RaisQ task, and don't merge or push a `raisq/` branch unless the user asks you to outside RaisQ.
 - **Change `.raisq/` through commands when one exists.** Commands check the change and keep RaisQ's records right; a fact changed by hand, for example, doesn't send back the tasks that relied on it. Edit a file by hand only when the user asks you to, or when no command covers it, such as changing a check's command in its plugin file. Say which file you're changing first.
 - **If a command warns and asks for `--yes`, tell the user the warning in full and let them decide.** Never add `--yes` on your own.
-- **Never weaken RaisQ's setup to get something working.** If Docker isn't running or a check can't start what it needs, tell the user. Don't set `isolation: none`, and don't put a workaround such as starting a container inside a check.
+- **Settings like `isolation` are the user's choice.** Don't change one without asking. If they've chosen `isolation: none`, work with it: providers still start their containers through the host's Docker. If something can't start, such as Docker not running, tell the user rather than working around it, for example by starting a container inside a check.
 
 ## Setting up a project
 

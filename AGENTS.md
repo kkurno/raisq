@@ -9,7 +9,7 @@ RaisQ makes AI-built work prove itself: it runs an agent in a container, checks 
 ```
 go build ./...
 go test ./...                                  # offline: no agent, model, network or Docker
-RAISQ_DOCKER_TEST=1 go test ./plugin/docker    # needs a running Docker
+RAISQ_DOCKER_TEST=1 go test ./plugin/docker ./plugin/registry   # needs a running Docker
 gofmt -l . && go vet ./...                     # both must be clean
 go build -o /tmp/raisq ./cmd/raisq             # to try the CLI in a scratch project
 ```
