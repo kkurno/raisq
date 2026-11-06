@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // files is the skill folder: SKILL.md, which agents always load, and
@@ -59,6 +60,19 @@ func Write(project string, skills []string) ([]string, error) {
 	return wrote, nil
 }
 
+// sameWords is whether a and b say the same, ignoring whitespace and how
+// Markdown list and emphasis markers are spelled, which formatters change.
+func sameWords(a, b []byte) bool {
+	return bytes.Equal(words(a), words(b))
+}
+
+func words(b []byte) []byte {
+	// A formatter may write * or _ for emphasis and - or * for a list item;
+	// the words are what matter.
+	s := strings.NewReplacer("*", "", "_", "", "-", "").Replace(string(b))
+	return []byte(strings.Join(strings.Fields(s), " "))
+}
+
 // Written is the skills folders under project that already hold the skill.
 func Written(project string, skills []string) []string {
 	var out []string
@@ -70,15 +84,16 @@ func Written(project string, skills []string) []string {
 	return out
 }
 
-// Stale is the skill folders under project where any file differs from this
-// version's skill, or is missing.
+// Stale is the skill folders under project where any file's words differ
+// from this version's skill, or a file is missing. A formatter rewrapping
+// lines or changing spacing, as a pre-commit hook might, isn't a difference.
 func Stale(project string, skills []string) []string {
 	var out []string
 	for _, s := range Written(project, skills) {
 		stale := false
 		_ = each(func(rel string, data []byte) error {
 			got, err := os.ReadFile(filepath.Join(project, Dir(s), rel))
-			if err != nil || !bytes.Equal(got, data) {
+			if err != nil || !sameWords(got, data) {
 				stale = true
 			}
 			return nil
