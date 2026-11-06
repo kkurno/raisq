@@ -422,13 +422,9 @@ func baseline(ctx context.Context, d Deps, base string) (domain.Baseline, error)
 	if err := install(ctx, sess); err != nil {
 		return b, err
 	}
-	env, err := startProviders(ctx, d, sess)
-	if err != nil {
-		return b, err
-	}
+	provs := startProviders(ctx, d, sess)
 	for _, c := range d.Checks {
-		r := c.Run(ctx, sess, envFor(c, env))
-		if r.Status == domain.CheckFail {
+		if r := provs.run(ctx, c, sess); r.Status == domain.CheckFail {
 			b.Failed[c.Name()] = true
 		}
 	}
@@ -560,11 +556,8 @@ func attempt(ctx context.Context, d Deps, task, run string, n int, spec domain.T
 	if err := install(ctx, sess); err != nil {
 		return ar, err
 	}
-	env, err := startProviders(ctx, d, sess)
-	if err != nil {
-		return ar, err
-	}
-	ar.Checks, err = runChecks(ctx, d, sess, dir, baseCommit, base, env)
+	provs := startProviders(ctx, d, sess)
+	ar.Checks, err = runChecks(ctx, d, sess, dir, baseCommit, base, provs)
 	if err != nil {
 		return ar, err
 	}
@@ -684,9 +677,37 @@ func hostDir(s slot.Session) string {
 	return s.Paths().Workdir
 }
 
+// providers is what was started for the checks: each provider's environment,
+// and why each one that couldn't start didn't.
+type providers struct {
+	env    map[string]map[string]string
+	failed map[string]string
+}
+
+// blocked is why c can't run, or "" when everything it needs started.
+func (p providers) blocked(c interface{ Needs() []string }) string {
+	var why []string
+	for _, n := range c.Needs() {
+		if reason, ok := p.failed[n]; ok {
+			why = append(why, reason)
+		}
+	}
+	return strings.Join(why, "; ")
+}
+
+// run runs a check with what it needs, or blocks it, with the reason, when a
+// provider it needs didn't start. A check needing nothing that failed runs.
+func (p providers) run(ctx context.Context, c slot.Check, s slot.Session) domain.CheckResult {
+	if why := p.blocked(c); why != "" {
+		return domain.CheckResult{Name: c.Name(), Status: domain.CheckBlocked, Output: why}
+	}
+	return c.Run(ctx, s, envFor(c, p.env))
+}
+
 // startProviders starts every provider a check or an extractor asked for,
-// after the builder has exited. A need with no provider blocks the task.
-func startProviders(ctx context.Context, d Deps, s slot.Session) (map[string]map[string]string, error) {
+// after the builder has exited. One that's missing or won't start blocks only
+// what needs it, so one broken service doesn't cost every other check.
+func startProviders(ctx context.Context, d Deps, s slot.Session) providers {
 	want := map[string]bool{}
 	for _, c := range d.Checks {
 		for _, n := range c.Needs() {
@@ -700,7 +721,7 @@ func startProviders(ctx context.Context, d Deps, s slot.Session) (map[string]map
 			}
 		}
 	}
-	env := map[string]map[string]string{}
+	out := providers{env: map[string]map[string]string{}, failed: map[string]string{}}
 	names := make([]string, 0, len(want))
 	for n := range want {
 		names = append(names, n)
@@ -714,15 +735,17 @@ func startProviders(ctx context.Context, d Deps, s slot.Session) (map[string]map
 			}
 		}
 		if p == nil {
-			return nil, fmt.Errorf("a check needs %q, and no provider supplies it", n)
+			out.failed[n] = fmt.Sprintf("it needs %q, and no provider supplies it", n)
+			continue
 		}
 		e, err := p.Start(ctx, s)
 		if err != nil {
-			return nil, fmt.Errorf("provider %s: %w", n, err)
+			out.failed[n] = fmt.Sprintf("provider %s didn't start: %v", n, err)
+			continue
 		}
-		env[n] = e
+		out.env[n] = e
 	}
-	return env, nil
+	return out
 }
 
 func envFor(c slot.Check, env map[string]map[string]string) map[string]string {
@@ -747,8 +770,9 @@ const baseEnv = "\x00base"
 // runChecks restores every check's locked files from before the task, runs
 // every check, then proves each test the builder added.
 func runChecks(ctx context.Context, d Deps, s slot.Session, dir, baseCommit string, base domain.Baseline,
-	env map[string]map[string]string) (domain.CheckOutcome, error) {
-	env[baseEnv] = map[string]string{"RAISQ_BASE": baseCommit}
+	provs providers) (domain.CheckOutcome, error) {
+	provs.env[baseEnv] = map[string]string{"RAISQ_BASE": baseCommit}
+	env := provs.env
 	var locks, tests []string
 	for _, c := range d.Checks {
 		locks = append(locks, c.Locks()...)
@@ -767,14 +791,15 @@ func runChecks(ctx context.Context, d Deps, s slot.Session, dir, baseCommit stri
 	})
 	var results []domain.CheckResult
 	for _, c := range checks {
-		results = append(results, c.Run(ctx, s, envFor(c, env)))
+		results = append(results, provs.run(ctx, c, s))
 	}
 
 	// Prove new tests: each must pass on the new code and fail on the old.
 	var proofs []domain.TestProof
 	for _, file := range added {
 		c := checkFor(checks, file)
-		if c == nil {
+		// A check that couldn't run is already blocked; its new tests wait.
+		if c == nil || provs.blocked(c) != "" {
 			continue
 		}
 		newRes, ok := c.RunOne(ctx, s, envFor(c, env), file)

@@ -59,6 +59,7 @@ Every check runs on the result:
 - **A new test counts only once it's proven.** RaisQ runs it on the new code, where it must pass, and on the old code, where it must fail. A test that passes on both tests nothing and is reported.
 - **Old failures don't count.** What already failed on the base commit is measured once and subtracted.
 - **A missing tool blocks the task.** It's never a pass.
+- **A provider that won't start blocks only the checks that need it,** each saying why. Every other check still runs, so one broken service doesn't hide what the rest found.
 
 ### 4. Judge
 

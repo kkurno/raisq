@@ -64,12 +64,9 @@ func TrialChecks(ctx context.Context, d Deps, checks []slot.Check) (map[string]T
 	if err := install(ctx, sess); err != nil {
 		return blockAll(err.Error()), nil
 	}
-	env, err := startProviders(ctx, trial, sess)
-	if err != nil {
-		return blockAll(err.Error()), nil
-	}
+	provs := startProviders(ctx, trial, sess)
 	for _, c := range checks {
-		r := c.Run(ctx, sess, envFor(c, env))
+		r := provs.run(ctx, c, sess)
 		out[c.Name()] = Trial{Status: r.Status, Output: r.Output}
 	}
 	return out, nil

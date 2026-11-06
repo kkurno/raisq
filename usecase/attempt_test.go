@@ -481,3 +481,44 @@ func TestChecksGetTheBaseCommit(t *testing.T) {
 		t.Fatalf("the baseline has no base to narrow to, saw:\n%s", data)
 	}
 }
+
+type brokenProvider struct{}
+
+func (brokenProvider) Name() string              { return "site" }
+func (brokenProvider) For() slot.ProviderFor     { return slot.ForChecks }
+func (brokenProvider) Mount() (slot.Mount, bool) { return slot.Mount{}, false }
+func (brokenProvider) Port() int                 { return 0 }
+func (brokenProvider) Start(context.Context, slot.Session) (map[string]string, error) {
+	return nil, fmt.Errorf("never became ready")
+}
+
+// A provider that won't start blocks only the checks that need it, with why;
+// every other check still runs and counts.
+func TestBrokenProviderBlocksOnlyItsChecks(t *testing.T) {
+	dir, s := project(t)
+	b := &fake.Builder{Fn: func(n int, wd, prompt string) (domain.Result, []domain.Choice) {
+		write(t, wd, "app.txt", "ok\n")
+		return domain.Result{Status: domain.ResultDone}, nil
+	}}
+	d := deps(t, dir, s, b, critic())
+	d.Providers = []slot.Provider{brokenProvider{}}
+	d.Checks = append(d.Checks, fake.Check{CheckName: "links", Cmd: "true", Need: []string{"site"}})
+	_, err := Run(context.Background(), d, "t1")
+	must(t, err)
+	var ar AttemptRecord
+	st0, _ := s.LoadState("t1")
+	must(t, s.LoadRunFile("t1", st0.LastRun, "attempt-1/attempt.json", &ar))
+	got := map[string]domain.CheckResult{}
+	for _, r := range ar.Checks.Results {
+		got[r.Name] = r
+	}
+	if got["tests"].Status != domain.CheckPass {
+		t.Fatalf("a check that doesn't need the broken provider still runs: %+v", got["tests"])
+	}
+	if got["links"].Status != domain.CheckBlocked || !strings.Contains(got["links"].Output, "never became ready") {
+		t.Fatalf("the check needing it is blocked, saying why: %+v", got["links"])
+	}
+	if st, _ := s.LoadState("t1"); st.State != domain.Parked || st.Reason != domain.Blocked {
+		t.Fatalf("a blocked check still parks the task, never passes: %+v", st)
+	}
+}
