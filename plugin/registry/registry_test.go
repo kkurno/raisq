@@ -387,16 +387,42 @@ func TestLocalServiceOnHostDocker(t *testing.T) {
 	}
 	ctx := context.Background()
 	s, _ := Local{}.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir()})
-	addr, err := s.(slot.Servicer).Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
+	svc, err := s.(slot.Servicer).Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if addr.Host != "127.0.0.1" || addr.Port == 0 || addr.Port == 6379 {
-		t.Fatalf("on the host, a service is on a local port RaisQ picked: %+v", addr)
+	if svc.Host != "127.0.0.1" || svc.Port == 0 || svc.Port == 6379 {
+		t.Fatalf("on the host, a service is on a local port RaisQ picked: %+v", svc.Address)
+	}
+	if r, err := svc.Exec(ctx, "redis-cli ping"); err != nil || !strings.Contains(r.Output, "PONG") {
+		t.Fatalf("a command runs inside the service, with its own tools: %v %+v", err, r)
 	}
 	name := s.(*localSession).svcs[0][1]
 	s.Stop(ctx)
 	if exec.Command("docker", "inspect", name).Run() == nil {
 		t.Fatal("the service must be removed when the session stops")
+	}
+}
+
+// With isolation: none, a Postgres provider becomes ready by the image's own
+// pg_isready, run inside its container, with nothing installed on the host.
+func TestLocalPostgresReadyInItsContainer(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	if containerTool() == "" {
+		t.Skip("no Docker or Podman running")
+	}
+	ctx := context.Background()
+	s, _ := Local{}.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir()})
+	defer s.Stop(ctx)
+	p := command.Provider{F: command.File{Name: "postgres", Slot: "provides", Image: "postgres:16-alpine", Port: 5432,
+		Env: map[string]string{"POSTGRES_PASSWORD": "test"}, Ready: "pg_isready -U postgres"}}
+	env, err := p.Start(ctx, s)
+	if err != nil {
+		t.Fatalf("postgres should become ready by its own pg_isready, not the host's: %v", err)
+	}
+	if env["RAISQ_POSTGRES_HOST"] != "127.0.0.1" || env["RAISQ_POSTGRES_PORT"] == "" {
+		t.Fatalf("the checks get where it is on the host: %v", env)
 	}
 }

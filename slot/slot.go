@@ -113,10 +113,18 @@ type Extractor interface {
 }
 
 // Servicer is a session that can start a service container beside it, such as
-// a database for the checks. It returns where the session reaches it, which
-// depends on the isolation, and the service stops with the session.
+// a database for the checks. It returns the service, and the service stops
+// with the session.
 type Servicer interface {
-	Service(ctx context.Context, req ServiceRequest) (Address, error)
+	Service(ctx context.Context, req ServiceRequest) (Service, error)
+}
+
+// Service is a running service container: where the checks reach it, which
+// depends on the isolation, and a way to run a command inside it, with its
+// own tools, such as a readiness probe.
+type Service struct {
+	Address
+	Exec func(ctx context.Context, cmd string) (ExecResult, error)
 }
 
 // ServiceRequest is a service to start from an image.

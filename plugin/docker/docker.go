@@ -328,16 +328,16 @@ func (s *Session) URL(port int) (string, error) {
 // network, reachable from the session at its name and its own port. It runs
 // only after the builder has exited, as every provider does, and stops with
 // the session.
-func (s *Session) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+func (s *Session) Service(ctx context.Context, req slot.ServiceRequest) (slot.Service, error) {
 	name := req.Name
 	if s.net == "" {
 		s.net = s.name + "-net"
 		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "create", s.net).CombinedOutput(); err != nil {
 			s.net = ""
-			return slot.Address{}, fmt.Errorf("making a network for %s: %s", name, strings.TrimSpace(string(out)))
+			return slot.Service{}, fmt.Errorf("making a network for %s: %s", name, strings.TrimSpace(string(out)))
 		}
 		if out, err := exec.CommandContext(ctx, s.d.Bin, "network", "connect", s.net, s.name).CombinedOutput(); err != nil {
-			return slot.Address{}, fmt.Errorf("joining the network for %s: %s", name, strings.TrimSpace(string(out)))
+			return slot.Service{}, fmt.Errorf("joining the network for %s: %s", name, strings.TrimSpace(string(out)))
 		}
 	}
 	cname := s.name + "-" + sanitize(name)
@@ -348,10 +348,24 @@ func (s *Session) Service(ctx context.Context, req slot.ServiceRequest) (slot.Ad
 	}
 	args = append(args, req.Image)
 	if out, err := exec.CommandContext(ctx, s.d.Bin, args...).CombinedOutput(); err != nil {
-		return slot.Address{}, fmt.Errorf("starting %s (%s): %s", name, req.Image, strings.TrimSpace(string(out)))
+		return slot.Service{}, fmt.Errorf("starting %s (%s): %s", name, req.Image, strings.TrimSpace(string(out)))
 	}
 	s.svcs = append(s.svcs, cname)
-	return slot.Address{Host: name, Port: req.Port}, nil
+	return slot.Service{Address: slot.Address{Host: name, Port: req.Port}, Exec: ContainerExec(s.d.Bin, cname)}, nil
+}
+
+// ContainerExec runs a command inside a running container, with its tools.
+func ContainerExec(bin, container string) func(context.Context, string) (slot.ExecResult, error) {
+	return func(ctx context.Context, cmd string) (slot.ExecResult, error) {
+		c := exec.CommandContext(ctx, bin, "exec", container, "sh", "-c", cmd)
+		var out bytes.Buffer
+		c.Stdout, c.Stderr = &out, &out
+		err := c.Run()
+		if ee, ok := err.(*exec.ExitError); ok {
+			return slot.ExecResult{Exit: ee.ExitCode(), Output: out.String()}, nil
+		}
+		return slot.ExecResult{Output: out.String()}, err
+	}
 }
 
 func (s *Session) Stop(ctx context.Context) error {

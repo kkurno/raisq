@@ -92,8 +92,9 @@ image: <image and version, such as postgres:16>
 # The port it listens on inside its container.
 port: <port, such as 5432>
 env: {<NAME>: <value>}
-# {%s.host} and {%s.port} are where the checks reach it, filled in by RaisQ.
-ready: <a command that exits 0 when it's ready, such as pg_isready -h {%s.host} -p {%s.port}>
+# Runs inside its container, with the image's own tools, until it exits 0.
+ready: <a command, such as pg_isready -U postgres, or redis-cli ping>
+# A check reaches it at {%s.host}:{%s.port} in its env, filled in by RaisQ.
 #
 # 2. The project's own app, started in the checks' container:
 # run: <command that starts it>

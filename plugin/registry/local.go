@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kkurno/raisq/plugin/docker"
 	"github.com/kkurno/raisq/plugin/proc"
 	"github.com/kkurno/raisq/slot"
 )
@@ -50,13 +51,13 @@ var containerTool = func() string {
 
 // Service starts a container from an image on the host, its port published
 // on a free port of 127.0.0.1 only, and removed when the session stops.
-func (s *localSession) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+func (s *localSession) Service(ctx context.Context, req slot.ServiceRequest) (slot.Service, error) {
 	bin := containerTool()
 	if bin == "" {
-		return slot.Address{}, fmt.Errorf("%s needs Docker or Podman to start its container (%s), and neither is running here. Start one, or remove the checks that need it", req.Name, req.Image)
+		return slot.Service{}, fmt.Errorf("%s needs Docker or Podman to start its container (%s), and neither is running here. Start one, or remove the checks that need it", req.Name, req.Image)
 	}
 	if req.Port == 0 {
-		return slot.Address{}, fmt.Errorf("%s needs port: the port %s listens on, so the checks can reach it", req.Name, req.Image)
+		return slot.Service{}, fmt.Errorf("%s needs port: the port %s listens on, so the checks can reach it", req.Name, req.Image)
 	}
 	name := fmt.Sprintf("raisq-%s-%d", req.Name, os.Getpid())
 	args := []string{"run", "-d", "--rm", "--name", name, "-p", fmt.Sprintf("127.0.0.1::%d", req.Port), "--security-opt", "no-new-privileges"}
@@ -65,21 +66,21 @@ func (s *localSession) Service(ctx context.Context, req slot.ServiceRequest) (sl
 	}
 	args = append(args, req.Image)
 	if out, err := exec.CommandContext(ctx, bin, args...).CombinedOutput(); err != nil {
-		return slot.Address{}, fmt.Errorf("starting %s (%s): %s", req.Name, req.Image, strings.TrimSpace(string(out)))
+		return slot.Service{}, fmt.Errorf("starting %s (%s): %s", req.Name, req.Image, strings.TrimSpace(string(out)))
 	}
 	s.mu.Lock()
 	s.svcs = append(s.svcs, [2]string{bin, name})
 	s.mu.Unlock()
 	out, err := exec.CommandContext(ctx, bin, "port", name, fmt.Sprintf("%d/tcp", req.Port)).Output()
 	if err != nil {
-		return slot.Address{}, fmt.Errorf("finding %s's port: %w", req.Name, err)
+		return slot.Service{}, fmt.Errorf("finding %s's port: %w", req.Name, err)
 	}
 	_, port, ok := strings.Cut(strings.TrimSpace(strings.Split(string(out), "\n")[0]), ":")
 	n, perr := strconv.Atoi(port)
 	if !ok || perr != nil {
-		return slot.Address{}, fmt.Errorf("finding %s's port: unexpected %q", req.Name, out)
+		return slot.Service{}, fmt.Errorf("finding %s's port: unexpected %q", req.Name, out)
 	}
-	return slot.Address{Host: "127.0.0.1", Port: n}, nil
+	return slot.Service{Address: slot.Address{Host: "127.0.0.1", Port: n}, Exec: docker.ContainerExec(bin, name)}, nil
 }
 
 func (s *localSession) Paths() slot.Paths { return s.paths }

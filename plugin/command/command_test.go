@@ -165,30 +165,49 @@ func TestCheckInADir(t *testing.T) {
 }
 
 // servicing is a session that starts services, reporting an address the way
-// isolation: none does: on the host, at a port it picked.
+// isolation: none does, and recording what ran inside the service and what
+// ran where the checks run.
 type servicing struct {
 	slot.Session
-	asked slot.ServiceRequest
+	asked        slot.ServiceRequest
+	inService    []string
+	inTheSession []string
 }
 
-func (s *servicing) Service(ctx context.Context, req slot.ServiceRequest) (slot.Address, error) {
+func (s *servicing) Service(ctx context.Context, req slot.ServiceRequest) (slot.Service, error) {
 	s.asked = req
-	return slot.Address{Host: "127.0.0.1", Port: 54321}, nil
+	return slot.Service{Address: slot.Address{Host: "127.0.0.1", Port: 54321},
+		Exec: func(ctx context.Context, cmd string) (slot.ExecResult, error) {
+			s.inService = append(s.inService, cmd)
+			return slot.ExecResult{}, nil
+		}}, nil
 }
 
-// Where a check reaches a service depends on the isolation, so one plugin
-// file works in both: {name.host} and {name.port} in a check's env and in
-// ready are filled from what the session reports.
-func TestServiceAddressReachesTheChecks(t *testing.T) {
+func (s *servicing) Exec(ctx context.Context, cmd string, env map[string]string) (slot.ExecResult, error) {
+	s.inTheSession = append(s.inTheSession, cmd)
+	return s.Session.Exec(ctx, cmd, env)
+}
+
+// A service's ready runs inside the service's own container, with its tools,
+// never where the checks run, which may not have them. Where a check reaches
+// the service depends on the isolation, so its env says {name.host} and
+// {name.port}, filled from what the session reports.
+func TestServiceReadyRunsInTheService(t *testing.T) {
 	sess := &servicing{Session: session(t)}
 	p := Provider{F: File{Name: "postgres", Slot: "provides", Image: "postgres:16", Port: 5432,
-		Ready: "test {postgres.host}:{postgres.port} = 127.0.0.1:54321"}}
+		Ready: "pg_isready -U app"}}
 	env, err := p.Start(context.Background(), sess)
 	if err != nil {
-		t.Fatalf("ready should see the filled address: %v", err)
+		t.Fatal(err)
 	}
 	if sess.asked.Port != 5432 || sess.asked.Image != "postgres:16" {
 		t.Fatalf("the service is asked for with its image and port: %+v", sess.asked)
+	}
+	if len(sess.inService) != 1 || sess.inService[0] != "pg_isready -U app" {
+		t.Fatalf("ready must run inside the service: %v", sess.inService)
+	}
+	if len(sess.inTheSession) != 0 {
+		t.Fatalf("ready must never run where the checks run: %v", sess.inTheSession)
 	}
 	c := Check{F: File{Name: "api-test", Slot: "checks", Needs: []string{"postgres"},
 		Env: map[string]string{"DATABASE_URL": "postgresql://u:p@{postgres.host}:{postgres.port}/app"},

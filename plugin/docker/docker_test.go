@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kkurno/raisq/plugin/command"
 	loginpkg "github.com/kkurno/raisq/plugin/login"
 	"github.com/kkurno/raisq/slot"
 	"github.com/kkurno/raisq/usecase"
@@ -128,12 +129,12 @@ func TestServiceBesideTheSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	sess := s.(*Session)
-	addr, err := sess.Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
+	svc, err := sess.Service(ctx, slot.ServiceRequest{Name: "cache", Image: "redis:7-alpine", Port: 6379})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if addr.Host != "cache" || addr.Port != 6379 {
-		t.Fatalf("in a container, a service is at its name and own port: %+v", addr)
+	if svc.Host != "cache" || svc.Port != 6379 {
+		t.Fatalf("in a container, a service is at its name and own port: %+v", svc.Address)
 	}
 	ok := false
 	for i := 0; i < 30 && !ok; i++ {
@@ -146,9 +147,9 @@ func TestServiceBesideTheSession(t *testing.T) {
 	if !ok {
 		t.Fatal("the service should answer at its name from the session")
 	}
-	svc, network := sess.svcs[0], sess.net
+	container, network := sess.svcs[0], sess.net
 	s.Stop(ctx)
-	if exec.Command("docker", "inspect", svc).Run() == nil {
+	if exec.Command("docker", "inspect", container).Run() == nil {
 		t.Fatal("the service must stop with the session")
 	}
 	if exec.Command("docker", "network", "inspect", network).Run() == nil {
@@ -181,5 +182,31 @@ func TestBunFromThePackage(t *testing.T) {
 	r, err := s.Exec(ctx, "bun --version", nil)
 	if err != nil || r.Exit != 0 || !strings.Contains(r.Output, "1.1.38") {
 		t.Fatalf("want bun 1.1.38 in the container, got %v %+v", err, r)
+	}
+}
+
+// A Postgres provider becomes ready by its image's own pg_isready, run inside
+// its container: the checks' container has no Postgres tools.
+func TestPostgresProviderReadyInItsContainer(t *testing.T) {
+	if os.Getenv("RAISQ_DOCKER_TEST") == "" {
+		t.Skip("set RAISQ_DOCKER_TEST=1 to run against Docker")
+	}
+	ctx := context.Background()
+	d := New("alpine:3.20")
+	if err := d.Available(ctx); err != nil {
+		t.Skip(err)
+	}
+	s, err := d.Start(ctx, slot.StartRequest{Checkout: t.TempDir(), OutDir: t.TempDir(), Label: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop(ctx)
+	p := command.Provider{F: command.File{Name: "postgres", Slot: "provides", Image: "postgres:16-alpine", Port: 5432,
+		Env: map[string]string{"POSTGRES_PASSWORD": "test"}, Ready: "pg_isready -U postgres"}}
+	if _, err := p.Start(ctx, s); err != nil {
+		t.Fatalf("postgres should become ready by its own pg_isready: %v", err)
+	}
+	if r, _ := s.Exec(ctx, "command -v pg_isready", nil); r.Exit == 0 {
+		t.Fatal("the checks' container has no pg_isready, so the probe can only have run in the service")
 	}
 }

@@ -334,28 +334,36 @@ func (p Provider) Start(ctx context.Context, s slot.Session) (map[string]string,
 			}
 		}
 	}
-	ready := p.F.Ready
 	if p.F.Image != "" {
 		sv, ok := s.(slot.Servicer)
 		if !ok {
 			return nil, fmt.Errorf("%s needs a service container (image: %s), and this isolation can't start one", p.F.Name, p.F.Image)
 		}
-		addr, err := sv.Service(ctx, slot.ServiceRequest{Name: p.F.Name, Image: p.F.Image, Env: p.F.Env, Port: p.F.Port})
+		svc, err := sv.Service(ctx, slot.ServiceRequest{Name: p.F.Name, Image: p.F.Image, Env: p.F.Env, Port: p.F.Port})
 		if err != nil {
 			return nil, err
 		}
 		// Where the checks reach it differs by isolation, so they get it as
-		// {name.host} and {name.port}, and so does ready.
-		env[envKey(p.F.Name, "HOST")], env[envKey(p.F.Name, "PORT")] = addr.Host, strconv.Itoa(addr.Port)
-		ready = Fill(ready, p.F.Name, addr)
+		// {name.host} and {name.port}.
+		env[envKey(p.F.Name, "HOST")], env[envKey(p.F.Name, "PORT")] = svc.Host, strconv.Itoa(svc.Port)
+		// ready runs inside the service's own container, with its own tools,
+		// such as pg_isready in a Postgres image: the checks' side may have
+		// none of them.
+		if p.F.Ready != "" {
+			if err := waitReady(ctx, svc.Exec, p.F.Ready); err != nil {
+				return nil, fmt.Errorf("%s: %w", p.F.Name, err)
+			}
+		}
+		return env, nil
 	}
 	if p.F.Run != "" {
 		if err := s.Background(ctx, p.F.Run, env); err != nil {
 			return nil, err
 		}
 	}
-	if ready != "" {
-		if err := waitReady(ctx, s, ready); err != nil {
+	if p.F.Ready != "" {
+		run := func(ctx context.Context, cmd string) (slot.ExecResult, error) { return s.Exec(ctx, cmd, nil) }
+		if err := waitReady(ctx, run, p.F.Ready); err != nil {
 			return nil, err
 		}
 	}
@@ -391,14 +399,14 @@ func Fill(s, name string, addr slot.Address) string {
 	return strings.NewReplacer("{"+name+".host}", addr.Host, "{"+name+".port}", strconv.Itoa(addr.Port)).Replace(s)
 }
 
-func waitReady(ctx context.Context, s slot.Session, ready string) error {
+func waitReady(ctx context.Context, run func(context.Context, string) (slot.ExecResult, error), ready string) error {
 	probe := ready
 	if strings.HasPrefix(ready, "http://") || strings.HasPrefix(ready, "https://") {
 		probe = "curl -fsS -o /dev/null " + shellQuote(ready) + " || wget -q -O /dev/null " + shellQuote(ready)
 	}
 	deadline := time.Now().Add(3 * time.Minute)
 	for time.Now().Before(deadline) {
-		r, err := s.Exec(ctx, probe, nil)
+		r, err := run(ctx, probe)
 		if err == nil && r.Exit == 0 {
 			return nil
 		}

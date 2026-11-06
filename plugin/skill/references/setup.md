@@ -77,10 +77,11 @@ slot: provides
 image: postgres:16             # the version the project uses, from docker-compose.yml or CI
 port: 5432                     # the port it listens on inside its container
 env: {POSTGRES_PASSWORD: test, POSTGRES_DB: app}
-ready: pg_isready -h {postgres.host} -p {postgres.port}   # a command that exits 0, or a URL
+ready: pg_isready -U postgres  # runs inside the service's container, with the image's own tools
 ```
 
-Where the checks reach a service depends on the machine's `isolation`: at its name in a container, or at `127.0.0.1` and a port RaisQ picks with `none`. So never write the address yourself: write `{postgres.host}` and `{postgres.port}`, in a check's `env` and in `ready`, and RaisQ fills them in. The same files then work for everyone on the team, whatever each person's isolation.
+- **`ready` runs inside the service's own container,** so it uses the image's tools, such as `pg_isready` in a Postgres image or `redis-cli ping` in Redis, and sees the service at its usual local address. Never ask the user to install a tool for it on their machine.
+- **Where the checks reach the service depends on the machine's `isolation`:** at its name in a container, or at `127.0.0.1` and a port RaisQ picks with `none`. So never write the address in a check: write `{postgres.host}` and `{postgres.port}` in its `env`, and RaisQ fills them in. The same files then work for everyone on the team, whatever each person's isolation.
 
 The project's own app, started in the checks' container, for checks that test it running:
 

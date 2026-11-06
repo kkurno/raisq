@@ -113,10 +113,12 @@ slot: provides
 image: postgres:16
 port: 5432
 env: {POSTGRES_PASSWORD: test, POSTGRES_DB: app}
-ready: pg_isready -h {postgres.host} -p {postgres.port}
+ready: pg_isready -U postgres
 ```
 
-Where the checks reach it depends on the isolation. With `docker` or `podman`, it's on a private network with the checks' container, at its name and own port. With `isolation: none`, it runs through the host's Docker or Podman, published on a free port of `127.0.0.1` only. So a check's `env` and `ready` say `{postgres.host}` and `{postgres.port}`, as `api-test` above does, and RaisQ fills them in: the same file works for every teammate, whatever their isolation. It's stopped and removed with the attempt. It always needs Docker or Podman; with neither running, the checks that need it are blocked, saying so.
+Its `ready` runs inside the service's own container, so it uses the image's own tools, such as `pg_isready`, and nothing needs installing anywhere else.
+
+Where the checks reach it depends on the isolation. With `docker` or `podman`, it's on a private network with the checks' container, at its name and own port. With `isolation: none`, it runs through the host's Docker or Podman, published on a free port of `127.0.0.1` only. So a check's `env` says `{postgres.host}` and `{postgres.port}`, as `api-test` above does, and RaisQ fills them in: the same file works for every teammate, whatever their isolation. It's stopped and removed with the attempt. It always needs Docker or Podman; with neither running, the checks that need it are blocked, saying so.
 
 A secret for the checks only, read on your machine and given to the checks as environment after the agent has exited:
 
