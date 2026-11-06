@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -119,5 +120,37 @@ func TestInitOnAClone(t *testing.T) {
 	initYes(t)
 	if !exists(cfg) {
 		t.Fatal("init sets up this machine")
+	}
+}
+
+// With isolation: none the builder is the agent on this machine, using its
+// own login, so doctor doesn't ask for the login RaisQ would copy into a
+// container; it still says when the agent isn't installed.
+func TestDoctorWithIsolationNone(t *testing.T) {
+	dir := gitProject(t)
+	initYes(t)
+	plugins := filepath.Join(dir, ".raisq", "plugins")
+	os.WriteFile(filepath.Join(plugins, "agent.yaml"), []byte("name: agent\nslot: builder\nvendor: v\ntool:\n  find: true --version\nrun: x {prompt}\nlogin:\n  - file: ~/.no-such-login.json\n    to: /home/raisq/.l\n"), 0o644)
+	cfg := filepath.Join(dir, ".raisq", "local", "config.yaml")
+	data, _ := os.ReadFile(cfg)
+	set := func(isolation string) {
+		out := strings.Replace(string(data), "builder: claude-code", "builder: agent", 1)
+		out = regexp.MustCompile(`(?m)^isolation: .*$`).ReplaceAllString(out, "isolation: "+isolation)
+		os.WriteFile(cfg, []byte(out), 0o644)
+	}
+	set("none")
+	proj, err := open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range doctor(context.Background(), proj) {
+		if strings.Contains(p, "not logged in") {
+			t.Fatalf("with isolation none, doctor mustn't ask for a login it never copies: %s", p)
+		}
+	}
+	os.WriteFile(filepath.Join(plugins, "agent.yaml"), []byte("name: agent\nslot: builder\nvendor: v\ntool:\n  find: no-such-agent-xyz --version\nrun: x {prompt}\n"), 0o644)
+	proj, _ = open()
+	if !strings.Contains(strings.Join(doctor(context.Background(), proj), "\n"), "no-such-agent-xyz") {
+		t.Fatal("with isolation none, doctor says when the agent isn't installed")
 	}
 }

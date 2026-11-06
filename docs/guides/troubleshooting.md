@@ -22,6 +22,8 @@ RaisQ uses your agent's existing login, so log in once the normal way, such as b
 
 On a Mac, the first run may ask you to allow access to the Keychain. Choose **Allow**.
 
+With `isolation: none`, RaisQ doesn't check this: the builder is the agent on your machine, using its own login however you've set it up, such as through a company gateway. RaisQ only checks the agent is installed.
+
 **"needs \<tool\>"**
 
 A plugin uses a tool that isn't installed on your computer. The message says how to install it.

@@ -138,7 +138,7 @@ The agent works with its permission prompts off, because nobody is there to appr
 - **Test secrets reach only the checks,** after the agent has exited, through a provider (see [plugins](plugins.md#provides)).
 - **`.raisq/` and RaisQ's agent skill never enter the container.** The agent can't read your rubrics or change what judges it, and it can't change the skill that tells your chat agent how to use RaisQ. They're also left out of every commit and diff the task makes.
 
-`isolation: none` runs the builder and the checks on the host, with the builder's permission prompts off and nothing between it and your files. It's your choice, such as for a machine that's disposable anyway, so `raisq config isolation none` warns and asks before setting it, and every review pack says so. Services the checks need still run in containers, through the host's Docker or Podman.
+`isolation: none` runs the builder and the checks on the host, with the builder's permission prompts off and nothing between it and your files. It's your choice, such as for a machine that's disposable anyway, so `raisq config isolation none` warns and asks before setting it, and every review pack says so. The builder is then the agent on your machine with its own login, however you've set it up, so RaisQ copies no login and doesn't check one. Services the checks need still run in containers, through the host's Docker or Podman.
 
 ## Big tasks
 

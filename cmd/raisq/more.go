@@ -288,6 +288,22 @@ func doctor(ctx context.Context, proj *registry.Project) []string {
 			problems = append(problems, f.Name+": a path under the home directory won't exist on a teammate's machine")
 		}
 	}
+	// With isolation: none the builder is the agent on this machine, using its
+	// own login, however it's set up; nothing is copied, so there's nothing to
+	// check but that the agent is there.
+	if proj.Config.Isolation == "none" {
+		if f, ok := proj.Agent(proj.Config.Builder); ok && f.Tool != nil && f.Tool.Find != "" {
+			bin := strings.Fields(f.Tool.Find)[0]
+			if _, err := exec.LookPath(bin); err != nil {
+				hint := ""
+				if f.Tool.InstallHint != "" {
+					hint = ": " + f.Tool.InstallHint
+				}
+				problems = append(problems, fmt.Sprintf("%s needs %s on this machine, since isolation is none%s", f.Name, bin, hint))
+			}
+		}
+		return problems
+	}
 	for _, f := range proj.Files {
 		if f.Slot != "builder" || f.Name != proj.Config.Builder || len(f.Login)+len(f.LoginEnv) == 0 {
 			continue
