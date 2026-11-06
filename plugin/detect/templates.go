@@ -1,14 +1,29 @@
 package detect
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
-// Template is a starting plugin file for a slot.
+// Template is a starting plugin file for a slot, with every field explained.
 func Template(slot, name string) (string, error) {
 	t, ok := templates[slot]
 	if !ok {
 		return "", fmt.Errorf("no slot %q: see raisq slots", slot)
 	}
-	return fmt.Sprintf(t, name), nil
+	return strings.ReplaceAll(t, "%s", name), nil
+}
+
+// RubricTemplate is a starting rubric file, with every field explained.
+func RubricTemplate(area string) string {
+	return strings.ReplaceAll(`# Rubrics are yes-or-no questions the critic answers about every task's
+# result, quoting what it found. Use one only for what no command can check.
+- id: %s/<short-name>
+  # About the task's result, answerable from its diff or pages. One thing.
+  ask: <a question answered yes or no>
+  # The answer that fails the task: yes or no.
+  fail_if: <yes or no>
+`, "%s", area)
 }
 
 // Slots is every slot a plugin file can fill, for raisq plugin new and add.
@@ -41,29 +56,49 @@ run: <command> --model {model}
 `,
 	"checks": `name: %s
 slot: checks
-priority: 30
-# Exit 0 passes. What it prints goes to the handoff.
+# One line on what it checks and where it comes from, such as a CI job.
+description: <what it checks, from which CI step or script>
+# Exit 0 passes. What it prints goes to the builder's next try and your review.
+# Use a command the project already runs. Put setup first: a && b.
 run: <command>
-# Optional: run one test file, so RaisQ can prove a new test is real.
+# Optional: the folder it runs in, such as apps/api in a monorepo. tests,
+# locks and {file} are then relative to it.
+# dir: <folder>
+# Runs one test file, so a test the builder adds is proven: it must fail on
+# the old code and pass on the new. Leave it out only if the tool can't.
 run_one: <command> {file}
-# Files that judge this check: restored from before the task before it runs.
-locks: []
-# Test files this check runs, for proving new ones.
-tests: []
-# Something to start first, such as site.
-needs: []
+# This check's test files. Before checks run, RaisQ puts every matching file
+# back to how it was before the task, so the builder can't pass by editing a
+# test. Leave it empty only for a check that runs no tests, such as a build.
+tests: ["<glob of its test files>"]
+# Files that decide how it judges: config, setup, fixtures, snapshots.
+# Restored the same way, so the builder can't loosen it.
+locks: ["<glob of its config>"]
+# Settings, such as where a database is. Committed: never a secret.
+# env: {<NAME>: <value>}
+# Providers to start first, such as a database or the site.
+# needs: [<provider>]
+# Lower runs first: build 10, lint and types 15, tests 20, e2e 30.
+priority: 20
 `,
 	"provides": `name: %s
 slot: provides
-# For checks (the default): started after the builder has exited.
+description: <what it gives the checks>
+# Started only when a check names it in needs:, after the builder has exited.
+# Keep one of these three, and delete the others.
+#
+# 1. A service in its own container, reachable from the checks at its name:
+image: <image and version, such as postgres:16>
+env: {<NAME>: <value>}
+ready: <a command that exits 0 when it's ready, such as pg_isready -h %s>
+#
+# 2. The project's own app, started in the checks' container:
 # run: <command that starts it>
-# ready: http://localhost:<port>
 # port: <port>
-# Or a file read on the host and given to the checks as environment:
+# ready: http://localhost:<port>
+#
+# 3. A git-ignored file on this machine, given to the checks as environment:
 # from: host:.env.test
-# Or, for the builder, a read-only reference with nothing secret in it:
-# for: builder
-# from: host:../design-system:ro
 `,
 	"extractor": `name: %s
 slot: extractor

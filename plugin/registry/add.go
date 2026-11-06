@@ -24,7 +24,36 @@ type Candidate struct {
 	Body     string
 	BuiltIn  bool
 	Problems []string
+	// Warnings don't stop it being added, but a person should know them.
+	Warnings []string
 	Trial    *usecase.Trial
+}
+
+// Protects is what a check keeps the builder from changing: its tests and
+// locks, relative to the project.
+func (c Candidate) Protects() []string {
+	if c.File.Slot != "checks" {
+		return nil
+	}
+	ch := command.Check{F: c.File}
+	return append(ch.Tests(), ch.Locks()...)
+}
+
+// warnings says what a check leaves unprotected. RaisQ can't tell from a
+// command whether it runs tests, so it says what's missing and lets a person
+// decide; a build or a lint is fine without either.
+func warnings(f command.File) []string {
+	if f.Slot != "checks" || strings.HasPrefix(f.Run, "builtin:") {
+		return nil
+	}
+	var w []string
+	if len(f.Tests) == 0 && len(f.Locks) == 0 {
+		w = append(w, "it lists no tests: or locks:, so nothing it uses is put back before it runs. If it runs tests or reads a config, the builder could edit those to pass")
+	}
+	if len(f.Tests) > 0 && f.RunOne == "" {
+		w = append(w, "it has no run_one, so tests the builder adds can't be proven to test anything")
+	}
+	return w
 }
 
 // Ready is whether it can be added: it fills its slot's contract.
@@ -81,6 +110,7 @@ func (p *Project) Prepare(ctx context.Context, from ...string) ([]Candidate, err
 		}
 		names[c.File.Name] = true
 		c.Problems = command.Contract(ctx, c.Body, p.Dir)
+		c.Warnings = warnings(c.File)
 		cs = append(cs, c)
 	}
 	// A check's providers come from the project or from what's added with it.
@@ -174,7 +204,7 @@ func (p *Project) byName(name string) (command.File, bool) {
 // rubrics/, each checked first. It never replaces one with the same id.
 func (p *Project) AddRubrics(from string) (string, []domain.Rubric, error) {
 	data, err := os.ReadFile(from)
-	name := strings.TrimSuffix(filepath.Base(from), filepath.Ext(from))
+	name := strings.TrimSuffix(strings.TrimSuffix(filepath.Base(from), filepath.Ext(from)), "-rubrics")
 	if err != nil {
 		body, ok := detect.Builtin(from + "-rubrics")
 		if !ok {

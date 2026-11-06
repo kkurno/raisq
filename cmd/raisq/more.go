@@ -360,12 +360,8 @@ func cmdPlugin(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return usageErr{"raisq plugin list|new|add|remove|test"}
 	}
-	proj, err := open()
-	if err != nil {
-		return err
-	}
-	switch args[0] {
-	case "new":
+	// A starting file needs no project: it's written where you are.
+	if args[0] == "new" {
 		if len(args) < 3 {
 			return usageErr{"raisq plugin new <slot> <name>  (slots: " + strings.Join(detect.Slots, ", ") + ")"}
 		}
@@ -373,15 +369,13 @@ func cmdPlugin(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		p := filepath.Join(proj.Raisq, "plugins", args[2]+".yaml")
-		if _, err := os.Stat(p); err == nil {
-			return fmt.Errorf("%s exists", p)
-		}
-		if err := write(p, body); err != nil {
-			return err
-		}
-		logf("Wrote %s. Fill in the <...> parts, then: raisq plugin test %s", p, args[2])
-		return nil
+		return writeDraft(args[2]+".yaml", body, "raisq plugin add "+args[2]+".yaml")
+	}
+	proj, err := open()
+	if err != nil {
+		return err
+	}
+	switch args[0] {
 	case "add":
 		return pluginAdd(ctx, proj, args[1:])
 	case "remove":
@@ -482,6 +476,12 @@ func pluginAdd(ctx context.Context, proj *registry.Project, args []string) error
 		for _, p := range c.Problems {
 			logf("  ✗ %s", p)
 			ready = false
+		}
+		if prot := c.Protects(); len(prot) > 0 && len(c.Problems) == 0 {
+			logf("  Puts back before checks run, so the builder can't change them: %s", strings.Join(prot, ", "))
+		}
+		for _, w := range c.Warnings {
+			logf("  ! %s", w)
 		}
 		if t := c.Trial; t != nil {
 			mark := map[domain.CheckStatus]string{domain.CheckPass: "✓", domain.CheckFail: "!", domain.CheckBlocked: "✗"}[t.Status]
@@ -630,7 +630,13 @@ func cmdConfig(args []string) error {
 // cmdRubric adds or lists the critic's standing questions.
 func cmdRubric(args []string) error {
 	if len(args) == 0 {
-		return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric add <file or set>"}
+		return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric new <area>  ·  raisq rubric add <file or set>"}
+	}
+	if args[0] == "new" {
+		if len(args) < 2 {
+			return usageErr{"raisq rubric new <area>  (such as api or web)"}
+		}
+		return writeDraft(args[1]+"-rubrics.yaml", detect.RubricTemplate(args[1]), "raisq rubric add "+args[1]+"-rubrics.yaml")
 	}
 	proj, err := open()
 	if err != nil {
@@ -671,5 +677,18 @@ func cmdRubric(args []string) error {
 		logf("Added to %s. Commit it so the critic asks these on your team's tasks too.", path)
 		return nil
 	}
-	return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric add <file or set>"}
+	return usageErr{"raisq rubric list [--built-in]  ·  raisq rubric new <area>  ·  raisq rubric add <file or set>"}
+}
+
+// writeDraft writes a starting file in the current folder, never in .raisq/:
+// what goes there is added through a command that tests it first.
+func writeDraft(name, body, next string) error {
+	if _, err := os.Stat(name); err == nil {
+		return fmt.Errorf("%s exists here: not overwritten", name)
+	}
+	if err := os.WriteFile(name, []byte(body), 0o644); err != nil {
+		return err
+	}
+	logf("Wrote %s. Fill in the <...> parts, then: %s", name, next)
+	return nil
 }

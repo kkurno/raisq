@@ -75,6 +75,8 @@ Agent:  RaisQ tried each check on the project as it is:
 
 When your project changes, `/raisq update the checks` proposes only what's new or different.
 
+Your agent follows a setup guide that comes with the skill, in `.agents/skills/raisq/references/setup.md`: the steps, the file formats, and the fields that keep the builder from editing your tests. It reads it only when setting up, so everyday requests stay quick.
+
 ## How your agent avoids doing the wrong thing
 
 Your agent works out what you meant, so it's built to check rather than guess:

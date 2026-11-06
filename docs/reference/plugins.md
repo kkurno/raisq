@@ -288,7 +288,7 @@ They go with the plugin: remove it with `raisq plugin remove <name>`, and the in
 ```
 raisq plugin list                     # every plugin file in the project
 raisq plugin list --built-in          # RaisQ's own, ready to add by name
-raisq plugin new checks my-check      # a starting file for a slot, with <...> to fill
+raisq plugin new checks my-check      # writes my-check.yaml here, every field explained, <...> to fill
 raisq plugin add my-check.yaml        # tests it, tries a check once on the project, asks before saving
 raisq plugin add api-test.yaml postgres.yaml   # a check and the provider it needs, together
 raisq plugin add links                # a built-in, by name

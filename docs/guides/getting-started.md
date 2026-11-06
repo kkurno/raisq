@@ -87,7 +87,7 @@ Then run `raisq doctor` to make sure everything is ready:
 
 If it reports a problem, see [Troubleshooting](troubleshooting.md).
 
-**Without an agent chat,** you can add checks yourself: `raisq plugin new checks unit-tests` gives you a file to fill in, and `raisq plugin add <file>` tries it and adds it. See [Plugins](../reference/plugins.md).
+**Without an agent chat,** you can add checks yourself. `raisq plugin new checks unit-tests` writes `unit-tests.yaml` in the folder you're in, with every field explained. Fill it in, then `raisq plugin add unit-tests.yaml` tries it on your project and adds it. See [Plugins](../reference/plugins.md).
 
 ### Changing the setup later
 

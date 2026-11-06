@@ -56,22 +56,15 @@ RaisQ exists because an AI's work isn't trusted until it's checked. You're an AI
 
 ## Setting up a project
 
-`raisq init` only sets up the machine. Working out how this project is checked is your job: you can read it, RaisQ can't. Each check you add judges every task the builder AI does, so a wrong one either lets mistakes through or blocks good work.
+`raisq init` only sets up the machine. Working out how the project is checked is your job: you can read the project, RaisQ can't. Each check you add judges every task the builder AI does, so a wrong one either lets mistakes through or fails good work.
 
-1. **Read how the project already checks itself.** CI workflows first (`.github/workflows/`, `.gitlab-ci.yml` and so on), then the scripts in each `package.json`, `Makefile`, `docker-compose.yml`, test configs, and in a monorepo each package's own. Note the setup each check needs, such as generating a client or starting a database. Read only committed files: never open `.env` or anything holding a secret.
-2. **Reuse before you write.** Run `raisq plugin list --built-in` and `raisq rubric list --built-in`. Add a built-in by its name when it fits, such as `links` for a website.
-3. **Draft a plugin file per check**, in a temporary folder, never in `.raisq/` directly. Use only commands the project already runs: every check must come from a CI step or a script you can point to. Run `raisq help` and see the plugins reference for the fields. For a monorepo, one check per package with `dir:`. For a service the checks need, a provider with `image:`, and the check's `env:` pointing at it. A slow check can narrow itself with `$RAISQ_BASE`. Leave out a check that tests a deployed site rather than the code.
-4. **Show the user the plan** before adding anything: each check, the CI step or script it came from, and what it needs.
-5. **Add them with `raisq plugin add <file>...`**, passing a check together with the provider it needs. RaisQ tests each one, tries every check once on the project as it is, and prints the result. Show the user each result in full, in particular:
-   - **already fails before any task:** it can't catch anything yet. Find out why from its output, usually missing setup, fix the draft, and try again.
-   - **blocked:** a tool or something it needs is missing.
+**Before you start, read [references/setup.md](references/setup.md)** in this skill's folder. It has the steps, the file formats, the fields that protect the project, and what to do with each result. In short:
 
-   When the user agrees with what they've seen, run it again with `--yes`.
-6. **Rubrics:** draft a few yes-or-no questions the critic should ask on every task, for what a command can't check, such as "does every new endpoint check the caller is allowed?" Add them with `raisq rubric add <file>`, after the user agrees.
-7. **Facts:** if the project shows people information such as a business name, phone number or prices, ask the user for each, and record their answers with `raisq fact add`. Rules for the code in files like `CLAUDE.md` or `CONTRIBUTING.md` can be facts with `--kind rule`: list the ones you found, and add only those the user confirms.
-8. **Remind the user to commit** `.raisq/`, so the team's tasks are checked the same way.
-
-To update later ("update the checks"), compare what the project runs now with `raisq plugin list`, and propose only what's new or changed.
+1. Read how the project already checks itself, from committed files only: CI first, then scripts, compose files and test configs.
+2. Reuse RaisQ's built-ins (`raisq plugin list --built-in`) before writing your own.
+3. Draft files outside `.raisq/`, starting from `raisq plugin new` and `raisq rubric new`. Every check comes from a command the project already runs.
+4. Show the user the plan, then add with `raisq plugin add <file>...`, which tries each check on the project first. Show the user every result, and fix what can't protect anything yet. Add with `--yes` only once they agree.
+5. Ask the user for facts, and record their words.
 
 ## Questions
 

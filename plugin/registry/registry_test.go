@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/kkurno/raisq/plugin/command"
 )
 
 // Every folder raisq skill can write to is kept from the builder, including
@@ -334,5 +336,27 @@ func TestAddRubricsAllOrNothing(t *testing.T) {
 	}
 	if _, rs, err := p.AddRubrics("web"); err != nil || len(rs) == 0 {
 		t.Fatalf("a built-in set is added by its name: %v", err)
+	}
+}
+
+// A check that runs tests without listing them leaves the builder free to
+// edit those tests, so adding it says so.
+func TestWarnsWhenTestsArentProtected(t *testing.T) {
+	if w := warnings(command.File{Slot: "checks", Run: "sh test/check.sh"}); len(w) != 1 {
+		t.Fatalf("a check protecting nothing must say so, whatever it runs: %v", w)
+	}
+	if w := warnings(command.File{Slot: "checks", Run: "jest", Tests: []string{"**/*.spec.ts"}}); len(w) != 1 {
+		t.Fatalf("tests without run_one can't be proven: %v", w)
+	}
+	ok := command.File{Slot: "checks", Run: "pnpm exec jest", RunOne: "pnpm exec jest {file}", Tests: []string{"**/*.spec.ts"}}
+	if w := warnings(ok); len(w) != 0 {
+		t.Fatalf("a protected test check has nothing to warn about: %v", w)
+	}
+	if w := warnings(command.File{Slot: "checks", Run: "builtin:links"}); len(w) != 0 {
+		t.Fatalf("a built-in check judges on its own: %v", w)
+	}
+	c := Candidate{File: command.File{Slot: "checks", Dir: "apps/api", Tests: []string{"**/*.spec.ts"}, Locks: []string{"jest.config.*"}}}
+	if got := strings.Join(c.Protects(), " "); got != "apps/api/**/*.spec.ts apps/api/jest.config.*" {
+		t.Fatalf("protects is relative to the project: %s", got)
 	}
 }
