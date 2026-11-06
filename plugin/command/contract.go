@@ -79,6 +79,14 @@ func Contract(ctx context.Context, body, dir string) []string {
 	if len(bad) > 0 {
 		return bad
 	}
+	if f.Slot == "checks" {
+		if svc := startsService(f.Run); svc != "" {
+			bad = append(bad, "its run starts a service with "+svc+": a check runs one command of the project's. Put the service in a provider with image:, and name it in needs:")
+		}
+	}
+	if len(bad) > 0 {
+		return bad
+	}
 	if f.Slot == "checks" && f.Dir != "" {
 		if info, err := os.Stat(filepath.Join(dir, f.Dir)); err != nil || !info.IsDir() {
 			return []string{"dir " + f.Dir + " isn't a folder in the project"}
@@ -107,4 +115,17 @@ func stripComments(s string) string {
 		out = append(out, l)
 	}
 	return strings.Join(out, "\n")
+}
+
+// containerTools start containers. A check that runs one manages its own
+// services, which ties it to one machine's setup and runs outside isolation's
+// control; providers are how a check gets a service.
+var containerTools = regexp.MustCompile(`(^|[\s;&|(])(docker|podman|docker-compose|nerdctl)\s+(run|compose|start|create|up)\b|(^|[\s;&|(])docker-compose\s+up\b`)
+
+// startsService is the container command a check's run starts, or "".
+func startsService(run string) string {
+	if m := containerTools.FindString(run); m != "" {
+		return strings.TrimLeft(m, " \t;&|(")
+	}
+	return ""
 }

@@ -197,3 +197,26 @@ func TestContractNeverRunsACheck(t *testing.T) {
 		t.Fatal("the contract check ran the check's command on the host")
 	}
 }
+
+// A check runs one of the project's commands. One that starts its own
+// containers is refused, pointing to a provider.
+func TestContractRefusesServices(t *testing.T) {
+	dir := t.TempDir()
+	for _, run := range []string{
+		`c=$(docker run -d postgres) && pnpm test`,
+		`docker compose up -d db && pnpm test`,
+		`podman run --rm redis`,
+		`docker-compose up -d && make test`,
+	} {
+		body := "name: x\nslot: checks\nrun: '" + strings.ReplaceAll(run, "'", "''") + "'\n"
+		bad := Contract(context.Background(), body, dir)
+		if len(bad) == 0 || !strings.Contains(strings.Join(bad, " "), "provider") {
+			t.Errorf("a check starting a service must be refused with what to do: %q → %v", run, bad)
+		}
+	}
+	for _, run := range []string{"pnpm exec jest", "docker image ls", "go test ./..."} {
+		if bad := Contract(context.Background(), "name: x\nslot: checks\nrun: "+run+"\n", dir); len(bad) != 0 {
+			t.Errorf("%q is an ordinary check: %v", run, bad)
+		}
+	}
+}

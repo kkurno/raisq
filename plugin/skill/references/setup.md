@@ -13,6 +13,7 @@ RaisQ has a builder AI make each task in a container, then decides pass or fail 
 
 ## Steps
 
+0. **Check the machine first:** `raisq doctor`. RaisQ needs Docker or Podman running, both for the builder and for the services checks need. If it reports a problem, tell the user and stop until it's fixed. Never change `isolation` to get past it: `isolation: none` runs the builder directly on the user's machine, and is the user's decision alone.
 1. **Read how the project already checks itself.** Read only committed files (`git ls-files` lists them); never open `.env`, `credentials/` or anything else that holds a secret. In this order:
    - CI: `.github/workflows/*.yml`, `.gitlab-ci.yml`, `.circleci/`, `Jenkinsfile`. This is the best source: it shows each check and the setup it needs.
    - `package.json` scripts, in each package of a monorepo (`pnpm-workspace.yaml`, `workspaces`, `turbo.json`, `nx.json` list them), `Makefile`, `go.mod`, `pyproject.toml`, `Cargo.toml`.
@@ -29,7 +30,11 @@ RaisQ has a builder AI make each task in a container, then decides pass or fail 
 
 ## Checks
 
-Each check must come from a command the project already runs, in CI or a script. Never invent one: a check RaisQ can't trace to the project is a guess about how the project should be tested.
+**A check runs one command the project already has,** such as a `package.json` script or a `make` target, plus simple setup before it like `prisma generate && …`. The project owns how it's tested, so people, CI and RaisQ all run the same thing. A check is never a program written for RaisQ:
+
+- **No services in a check.** Never start a database, a container or a server inside `run`. Put it in a provider with `image:` or `run:` (see [Providers](#providers)) and name it in `needs:`. `raisq plugin add` refuses a check that runs `docker run`, `docker compose` or `podman run`.
+- **No command to call?** If CI runs several steps inline, or no script covers what's needed, propose adding one to the project, such as a `test:migrations` script in `apps/api/package.json`. Show the user the change and make it only once they agree, like any change to their code. Then the check calls it.
+- **Never invent a check.** One RaisQ can't trace to the project's CI or scripts is a guess about how the project should be tested.
 
 ```yaml
 name: api-test                 # unique; one check per package and job: api-test, web-lint
@@ -123,7 +128,7 @@ raisq fact add orders/minimum --gap
 
 - **passes:** it will catch a task that breaks it. Good.
 - **already fails before any task:** it can't catch anything yet, because RaisQ only counts new failures. Read its output. Usually setup is missing: a client to generate, a service to start, an environment variable. Fix the draft and add it again. If the project really is failing there, tell the user: they may want to fix the project first, or add the check anyway and know it protects nothing yet.
-- **blocked:** a tool or something it needs isn't there, such as a provider that never became ready. Every task would be blocked by it, so fix it before adding.
+- **blocked:** a tool or something it needs isn't there, such as a provider that never became ready. Every task would be blocked by it, so fix it before adding. If a provider can't start because Docker or Podman isn't running, or the machine runs with `isolation: none`, tell the user and stop. Don't work around it by starting services in the check.
 
 Nothing is added until the command runs with `--yes`, which you do only after the user has seen these results and agreed.
 

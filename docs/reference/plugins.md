@@ -283,6 +283,10 @@ for_ai:
 
 They go with the plugin: remove it with `raisq plugin remove <name>`, and the instruction goes too.
 
+## A check runs one command
+
+A check's `run` is one command your project already has, such as a `package.json` script or a `make` target, with simple setup before it if needed. It's never a program written for RaisQ: if no command covers what's needed, add a script to your project, and the check calls it. A check never starts a service, such as `docker run` or `docker compose up`: a provider with `image:` does that, and `raisq plugin add` refuses a check that tries.
+
 ## Writing a plugin
 
 ```
